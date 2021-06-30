@@ -1,6 +1,8 @@
 
 //! Machine Status Register (mstatus) register
 
+use crate::{csrw, csrr};
+
 /// Mstatus Register
 #[derive(Clone, Copy, Debug)]
 pub struct Mstatus {
@@ -57,9 +59,7 @@ pub enum Mode {
 #[inline]
 pub fn read() -> Mstatus {
     let bits: u64;
-    unsafe {
-        asm!("csrr {}, mstatus", out(reg) bits);
-    }
+    csrr!("mstatus", bits);
     Mstatus { bits }
 }
 
@@ -67,7 +67,5 @@ pub fn read() -> Mstatus {
 #[inline]
 pub fn write(mstatus: Mstatus) {
     let mstatus = mstatus.bits();
-    unsafe {
-        asm!("csrw mstatus, {}", in(reg) mstatus);
-    }
+    csrw!("mstatus", mstatus);
 }

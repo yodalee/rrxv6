@@ -3,6 +3,7 @@
 #![no_std]
 
 mod param;
+mod asm;
 mod mstatus;
 mod uart;
 mod mepc;

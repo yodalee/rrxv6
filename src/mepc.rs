@@ -28,9 +28,7 @@ impl Mepc {
 #[inline]
 pub fn read() -> Mepc {
     let bits: u64;
-    unsafe {
-        asm!("csrr {}, mepc", out(reg) bits);
-    }
+    csrr!("mepc", bits);
     Mepc { bits }
 }
 
@@ -38,7 +36,5 @@ pub fn read() -> Mepc {
 #[inline]
 pub fn write(mepc: Mepc) {
     let mepc = mepc.bits();
-    unsafe {
-        asm!("csrw mepc, {}", in(reg) mepc);
-    }
+    csrw!("mepc", mepc);
 }
