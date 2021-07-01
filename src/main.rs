@@ -2,12 +2,15 @@
 #![no_main]
 #![no_std]
 
-mod param;
 mod asm;
+mod param;
 mod mstatus;
 mod uart;
 mod mepc;
 mod start;
+mod delegate;
+mod supervisor_interrupt;
+mod pmp;
 
 #[no_mangle]
 pub fn main() -> ! {
