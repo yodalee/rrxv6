@@ -3,6 +3,8 @@ use core::panic::PanicInfo;
 use crate::param;
 use crate::mstatus;
 use crate::mepc;
+use crate::tp;
+use crate::hartid;
 use crate::delegate;
 use crate::supervisor_interrupt::{Sie, Interrupt};
 use crate::{csrr, csrw};
@@ -42,6 +44,10 @@ fn start() -> ! {
     sie.set_enable(Interrupt::TimerInterrupt);
     sie.set_enable(Interrupt::ExternalInterrupt);
     Sie::write(sie);
+
+    // Store hart id in tp register, for cpuid()
+    let hartid = hartid::Mhartid::read().bits();
+    tp::write(hartid);
 
     // Setup PMP so that supervisor mode can access memory
     PMPAddress::write(0, (!(0)) >> 10);

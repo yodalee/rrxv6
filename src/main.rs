@@ -3,6 +3,8 @@
 #![no_std]
 
 mod asm;
+mod hartid;
+mod tp;
 mod param;
 mod mstatus;
 mod uart;
@@ -14,8 +16,10 @@ mod pmp;
 
 #[no_mangle]
 pub fn main() -> ! {
-    let m_uart = uart::read();
-    m_uart.puts("Hello World\n");
+    if tp::read() == 0 {
+        let m_uart = uart::read();
+        m_uart.puts("Hello World\n");
+    }
 
     loop {}
 }
