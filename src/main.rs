@@ -2,17 +2,12 @@
 #![no_main]
 #![no_std]
 
-mod asm;
-mod hartid;
-mod tp;
+mod riscv;
 mod param;
-mod mstatus;
-mod uart;
-mod mepc;
 mod start;
-mod delegate;
-mod supervisor_interrupt;
-mod pmp;
+
+use crate::riscv::register::tp;
+use crate::riscv::uart;
 
 #[no_mangle]
 pub fn main() -> ! {

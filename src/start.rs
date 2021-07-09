@@ -1,14 +1,15 @@
 use core::panic::PanicInfo;
 
-use crate::param;
-use crate::mstatus;
-use crate::mepc;
-use crate::tp;
-use crate::hartid;
-use crate::delegate;
-use crate::supervisor_interrupt::{Sie, Interrupt};
 use crate::{csrr, csrw};
-use crate::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
+
+use crate::param;
+use crate::riscv::register::mstatus;
+use crate::riscv::register::mepc;
+use crate::riscv::register::tp;
+use crate::riscv::register::hartid;
+use crate::riscv::register::delegate;
+use crate::riscv::register::sie::{Sie, Interrupt};
+use crate::riscv::register::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
 
 #[no_mangle]
 static STACK0: [u8;param::STACK_SIZE * param::NCPU] = [0;param::STACK_SIZE * param::NCPU];

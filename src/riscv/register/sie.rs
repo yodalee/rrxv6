@@ -1,5 +1,5 @@
 
-//! Supervisor Interrupt Register (sip and sie)
+//! Supervisor Interrupt Register (sie)
 
 use crate::{csrw, csrr};
 
@@ -11,12 +11,6 @@ pub enum Interrupt {
     TimerInterrupt,
     /// External Interrupt STIE 1 << 9
     ExternalInterrupt,
-}
-
-/// Supervisor Interrupt Pending Register (sie)
-#[derive(Clone, Copy, Debug)]
-pub struct Sip {
-    bits: u64
 }
 
 /// Supervisor Interrupt Enable Register (sie)
