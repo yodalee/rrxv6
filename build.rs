@@ -13,10 +13,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     File::create(out_dir.join("linker.ld"))?.write_all(include_bytes!("linker.ld"))?;
 
     // assemble the assembly file
-    Build::new().file("src/entry.S").compile("asm");
+    Build::new()
+        .file("src/entry.S")
+        .file("src/kernelvec.S")
+        .compile("asm");
 
     // rebuild if `entry.s` changed
     println!("cargo:rerun-if-changed=src/entry.S");
+    // rebuild if `kernelvec.s` changed
+    println!("cargo:rerun-if-changed=src/kernelvec.S");
 
     Ok(())
 }

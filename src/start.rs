@@ -11,9 +11,53 @@ use crate::riscv::register::delegate;
 use crate::riscv::register::sie;
 use crate::riscv::register::interrupt::Interrupt;
 use crate::riscv::register::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
+use crate::riscv::register::mscratch;
+use crate::riscv::register::mie;
+use crate::riscv::register::mtvec;
 
 #[no_mangle]
 static STACK0: [u8;param::STACK_SIZE * param::NCPU] = [0;param::STACK_SIZE * param::NCPU];
+
+#[no_mangle]
+static TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];
+
+const INTERVAL : u64 = 1000000;
+const MTIMEADDR : u64 = 0x200BFF8;
+const MTIMECMPADDR : u64 = 0x2000000 + 0x4000;
+
+extern "C" {
+    fn timervec();
+}
+
+// setup timer and timer interrupt
+fn init_timer() {
+    let hartid = hartid::Mhartid::read().bits();
+
+    let mut arr = TIMER_SCRATCH[hartid as usize];
+    let mtimecmpaddr = MTIMECMPADDR + 8 * hartid;
+    unsafe {
+        core::ptr::write_volatile(
+            mtimecmpaddr as *mut u64,
+            core::ptr::read_volatile(MTIMEADDR as *mut u64) + INTERVAL);
+    }
+    arr[3] = mtimecmpaddr;
+    arr[4] = INTERVAL;
+    let mscratch = mscratch::Mscratch::from_bits(arr.as_ptr() as u64);
+    mscratch.write();
+
+    // set the machine mode trap handler
+    let mtvec = mtvec::Mtvec::from_bits(timervec as u64);
+    mtvec.write();
+
+    // Enable machine interrupt in mstatus
+    let mut ms = mstatus::read();
+    ms.enable_interrupt(mstatus::Mode::MachineMode);
+    mstatus::write(ms);
+
+    let mut mie = mie::Mie::read();
+    mie.set_machine_enable(Interrupt::TimerInterrupt);
+    mie.write();
+}
 
 #[no_mangle]
 fn start() -> ! {
@@ -50,6 +94,8 @@ fn start() -> ! {
     // Store hart id in tp register, for cpuid()
     let hartid = hartid::Mhartid::read().bits();
     tp::write(hartid);
+
+    init_timer();
 
     // Setup PMP so that supervisor mode can access memory
     PMPAddress::write(0, (!(0)) >> 10);
