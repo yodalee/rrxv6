@@ -2,16 +2,7 @@
 //! Supervisor Interrupt Register (sie)
 
 use crate::{csrw, csrr};
-
-/// Type of interrupt
-pub enum Interrupt {
-    /// Software Interrupt SSIE 1 << 1
-    SoftwareInterrupt,
-    /// Timer Interrupt STIE 1 << 5
-    TimerInterrupt,
-    /// External Interrupt STIE 1 << 9
-    ExternalInterrupt,
-}
+use super::interrupt::Interrupt;
 
 /// Supervisor Interrupt Enable Register (sie)
 #[derive(Clone, Copy, Debug)]
@@ -26,7 +17,7 @@ impl Sie {
     }
 
     #[inline]
-    pub fn set_disable(&mut self, interrupt: Interrupt) {
+    pub fn set_supervisor_disable(&mut self, interrupt: Interrupt) {
         self.bits &= match interrupt {
             Interrupt::SoftwareInterrupt => !(1 << 1),
             Interrupt::TimerInterrupt =>    !(1 << 5),
@@ -35,7 +26,7 @@ impl Sie {
     }
 
     #[inline]
-    pub fn set_enable(&mut self, interrupt: Interrupt) {
+    pub fn set_supervisor_enable(&mut self, interrupt: Interrupt) {
         self.bits |= match interrupt {
             Interrupt::SoftwareInterrupt => (1 << 1),
             Interrupt::TimerInterrupt =>    (1 << 5),
@@ -52,8 +43,8 @@ impl Sie {
     }
 
     #[inline]
-    pub fn write(sie: Self) {
-        let bits = sie.bits();
+    pub fn write(self) {
+        let bits = self.bits();
         csrw!("sie", bits);
     }
 }

@@ -8,7 +8,8 @@ use crate::riscv::register::mepc;
 use crate::riscv::register::tp;
 use crate::riscv::register::hartid;
 use crate::riscv::register::delegate;
-use crate::riscv::register::sie::{Sie, Interrupt};
+use crate::riscv::register::sie;
+use crate::riscv::register::interrupt::Interrupt;
 use crate::riscv::register::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
 
 #[no_mangle]
@@ -40,11 +41,11 @@ fn start() -> ! {
     delegate::mideleg::write(0xffff);
 
     // Enable interrupt in supervisor mode
-    let mut sie = Sie::read();
-    sie.set_enable(Interrupt::SoftwareInterrupt);
-    sie.set_enable(Interrupt::TimerInterrupt);
-    sie.set_enable(Interrupt::ExternalInterrupt);
-    Sie::write(sie);
+    let mut sie = sie::Sie::read();
+    sie.set_supervisor_enable(Interrupt::SoftwareInterrupt);
+    sie.set_supervisor_enable(Interrupt::TimerInterrupt);
+    sie.set_supervisor_enable(Interrupt::ExternalInterrupt);
+    sie.write();
 
     // Store hart id in tp register, for cpuid()
     let hartid = hartid::Mhartid::read().bits();
