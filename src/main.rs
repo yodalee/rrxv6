@@ -7,49 +7,47 @@ mod context;
 mod riscv;
 mod param;
 mod start;
-mod spinlock;
-mod user;
+mod proc;
+mod scheduler;
+mod util;
 
 use crate::riscv::register::tp;
 use crate::riscv::uart;
+use crate::scheduler::{Scheduler, task_go};
 use crate::context::Context;
-use core::default;
-use crate::user::{CTX_TASK, TASK0_STACK, user_task0};
+use crate::proc::user_init;
 
+// use lazy_static::lazy_static;
+
+use core::default;
 use core::convert::TryInto;
 
-static mut CTX_OS: Context = Context {
-    ra:  0,
-    sp:  0,
-    s0:  0,
-    s1:  0,
-    s2:  0,
-    s3:  0,
-    s4:  0,
-    s5:  0,
-    s6:  0,
-    s7:  0,
-    s8:  0,
-    s9:  0,
-    s10: 0,
-    s11: 0,
+static mut SCHEDULER: Scheduler = Scheduler {
+    stack_task: [[0;param::STACK_SIZE];param::NPROC],
+    ctx_task:   [Context {
+        ra:0, sp:0,
+        s: [0;12] };param::NPROC],
+    ctx_os:     Context{ ra:0, sp:0, s:[0;12] },
+    task_cnt: 0,
+    current_task: 0,
 };
 
 #[no_mangle]
 pub fn main() -> ! {
-    extern "Rust" {
-        fn sys_switch(ctx1: *mut Context, ctx2: *mut Context);
-    }
-
     if tp::read() == 0 {
         let m_uart = uart::read();
         m_uart.puts("rrxv6 start\n");
 
-        unsafe {
-            CTX_TASK.ra = user_task0 as u64;
-            CTX_TASK.sp = TASK0_STACK.as_ptr() as u64;
-            sys_switch(&mut CTX_OS as *mut _,
-                       &mut CTX_TASK as *mut _);
+        user_init();
+
+        loop {
+            m_uart.puts("OS: Activate next task\n");
+            unsafe {
+                task_go(SCHEDULER.current_task);
+                SCHEDULER.current_task = (SCHEDULER.current_task + 1) % SCHEDULER.task_cnt;
+            }
+            m_uart.puts("OS: Back to OS\n");
+            m_uart.putc('\n');
         }
     }
 

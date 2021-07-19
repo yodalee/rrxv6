@@ -19,7 +19,7 @@ use crate::riscv::register::mtvec;
 static STACK0: [u8;param::STACK_SIZE * param::NCPU] = [0;param::STACK_SIZE * param::NCPU];
 
 #[no_mangle]
-static TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];
+static mut TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];
 
 const INTERVAL : u64 = 1000000;
 const MTIMEADDR : u64 = 0x200BFF8;
@@ -33,17 +33,19 @@ extern "C" {
 fn init_timer() {
     let hartid = hartid::Mhartid::read().bits();
 
-    let mut arr = TIMER_SCRATCH[hartid as usize];
     let mtimecmpaddr = MTIMECMPADDR + 8 * hartid;
     unsafe {
         core::ptr::write_volatile(
             mtimecmpaddr as *mut u64,
             core::ptr::read_volatile(MTIMEADDR as *mut u64) + INTERVAL);
     }
-    arr[3] = mtimecmpaddr;
-    arr[4] = INTERVAL;
-    let mscratch = mscratch::Mscratch::from_bits(arr.as_ptr() as u64);
-    mscratch.write();
+    unsafe {
+        let arr = &mut TIMER_SCRATCH[hartid as usize];
+        arr[3] = mtimecmpaddr;
+        arr[4] = INTERVAL;
+        let mscratch = mscratch::Mscratch::from_bits(arr.as_ptr() as u64);
+        mscratch.write();
+    }
 
     // set the machine mode trap handler
     let mtvec = mtvec::Mtvec::from_bits(timervec as u64);
