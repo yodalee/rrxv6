@@ -37,5 +37,5 @@ SECTIONS
     _ebss = .;
   }
 
-  PROVIDE(_end = .);
+  PROVIDE(_END = .);
 };
