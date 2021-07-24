@@ -16,7 +16,7 @@ use crate::riscv::register::mie;
 use crate::riscv::register::mtvec;
 
 #[no_mangle]
-static STACK0: [u8;param::STACK_SIZE * param::NCPU] = [0;param::STACK_SIZE * param::NCPU];
+static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE * param::NCPU];
 
 #[no_mangle]
 static mut TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];

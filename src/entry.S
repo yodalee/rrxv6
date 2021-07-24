@@ -1,6 +1,6 @@
 .section .text.entry
 .global _entry
-.equ STACK_SIZE, 4096
+.equ STACK_SIZE, 8192
 _entry:
 	# set up a stack for C.
 	# STACK0 is declared in main.rs,
