@@ -5,6 +5,7 @@ use crate::SCHEDULER;
 use core::default::Default;
 
 type TaskStack = [u8;param::STACK_SIZE];
+static STACK_TASK: [TaskStack;param::NPROC] = [[0;param::STACK_SIZE];param::NPROC];
 
 extern "Rust" {
     fn sys_switch(ctx1: *mut Context, ctx2: *mut Context);
@@ -12,7 +13,6 @@ extern "Rust" {
 
 #[derive(Debug)]
 pub struct Scheduler {
-    pub stack_task: [TaskStack;param::NPROC],
     pub ctx_task:   [Context;  param::NPROC],
     pub ctx_os:     Context,
 
@@ -23,7 +23,6 @@ pub struct Scheduler {
 impl Default for Scheduler {
     fn default() -> Self {
         Self {
-            stack_task: [[0;param::STACK_SIZE];param::NPROC],
             ctx_task:   [Context::default();param::NPROC],
             ctx_os:     Default::default(),
 
@@ -40,7 +39,7 @@ pub fn os_kernel() {
 pub fn task_create(f: fn()) {
     unsafe {
         let idx = SCHEDULER.task_cnt;
-        let stack_top = &SCHEDULER.stack_task[idx] as *const u8 as u64 + ((param::STACK_SIZE-1) as u64);
+        let stack_top = &STACK_TASK[idx] as *const u8 as u64 + ((param::STACK_SIZE-1) as u64);
         SCHEDULER.ctx_task[idx].sp = stack_top;
         SCHEDULER.ctx_task[idx].ra = f as u64;
         SCHEDULER.task_cnt += 1;

@@ -23,7 +23,6 @@ use core::default;
 use core::convert::TryInto;
 
 static mut SCHEDULER: Scheduler = Scheduler {
-    stack_task: [[0;param::STACK_SIZE];param::NPROC],
     ctx_task:   [Context {
         ra:0, sp:0,
         s: [0;12] };param::NPROC],
