@@ -1,7 +1,7 @@
 
 //! User program
 
-use crate::riscv::uart;
+use crate::uart;
 use crate::context::Context;
 use crate::param;
 use crate::util::delay;

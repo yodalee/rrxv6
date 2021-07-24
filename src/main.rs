@@ -10,9 +10,9 @@ mod start;
 mod proc;
 mod scheduler;
 mod util;
+mod uart;
 
 use crate::riscv::register::tp;
-use crate::riscv::uart;
 use crate::scheduler::{Scheduler, task_go};
 use crate::context::Context;
 use crate::proc::user_init;
