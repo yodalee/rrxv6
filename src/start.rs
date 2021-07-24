@@ -3,6 +3,7 @@ use core::panic::PanicInfo;
 use crate::{csrr, csrw};
 
 use crate::param;
+use crate::memorylayout;
 use crate::riscv::register::mstatus;
 use crate::riscv::register::mepc;
 use crate::riscv::register::tp;
@@ -22,8 +23,6 @@ static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE
 static mut TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];
 
 const INTERVAL : u64 = 1000000;
-const MTIMEADDR : u64 = 0x200BFF8;
-const MTIMECMPADDR : u64 = 0x2000000 + 0x4000;
 
 extern "C" {
     fn timervec();
@@ -33,11 +32,10 @@ extern "C" {
 fn init_timer() {
     let hartid = hartid::Mhartid::read().bits();
 
-    let mtimecmpaddr = MTIMECMPADDR + 8 * hartid;
+    let mtimecmpaddr = memorylayout::CLINT_MTIMECMP + 8 * hartid;
     unsafe {
-        core::ptr::write_volatile(
-            mtimecmpaddr as *mut u64,
-            core::ptr::read_volatile(MTIMEADDR as *mut u64) + INTERVAL);
+        let val = core::ptr::read_volatile(memorylayout::CLINT_MTIME as *mut u64);
+        core::ptr::write_volatile(mtimecmpaddr as *mut u64, val + INTERVAL);
     }
     unsafe {
         let arr = &mut TIMER_SCRATCH[hartid as usize];

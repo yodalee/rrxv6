@@ -36,4 +36,6 @@ SECTIONS
     *(.bss .bss.*)
     _ebss = .;
   }
+
+  PROVIDE(_end = .);
 };

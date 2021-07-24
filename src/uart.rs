@@ -1,4 +1,5 @@
-use volatile_register::{RW};
+use volatile_register::RW;
+use crate::memorylayout;
 
 pub struct UART {
     thr: RW<u8>,
@@ -27,5 +28,5 @@ impl UART {
 }
 
 pub fn read() -> &'static mut UART {
-    unsafe { &mut *(0x1000_0000 as *mut UART) }
+    unsafe { &mut *(memorylayout::UART0 as *mut UART) }
 }

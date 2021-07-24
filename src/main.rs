@@ -11,6 +11,7 @@ mod proc;
 mod scheduler;
 mod util;
 mod uart;
+mod memorylayout;
 
 use crate::riscv::register::tp;
 use crate::scheduler::{Scheduler, task_go};
