@@ -17,19 +17,15 @@ use crate::scheduler::{Scheduler, task_go};
 use crate::context::Context;
 use crate::proc::user_init;
 
-// use lazy_static::lazy_static;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 use core::default;
 use core::convert::TryInto;
 
-static mut SCHEDULER: Scheduler = Scheduler {
-    ctx_task:   [Context {
-        ra:0, sp:0,
-        s: [0;12] };param::NPROC],
-    ctx_os:     Context{ ra:0, sp:0, s:[0;12] },
-    task_cnt: 0,
-    current_task: 0,
-};
+lazy_static! {
+    static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::default());
+}
 
 #[no_mangle]
 pub fn main() -> ! {
@@ -41,12 +37,16 @@ pub fn main() -> ! {
 
         loop {
             m_uart.puts("OS: Activate next task\n");
-            unsafe {
-                task_go(SCHEDULER.current_task);
-                SCHEDULER.current_task = (SCHEDULER.current_task + 1) % SCHEDULER.task_cnt;
+            let idx = {
+                let scheduler = SCHEDULER.lock();
+                scheduler.current_task
+            };
+            task_go(idx);
+            {
+                let mut scheduler = SCHEDULER.lock();
+                scheduler.current_task = (scheduler.current_task + 1) % scheduler.task_cnt;
             }
-            m_uart.puts("OS: Back to OS\n");
-            m_uart.putc('\n');
+            m_uart.puts("OS: Back to OS\n\n");
         }
     }
 

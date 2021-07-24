@@ -37,30 +37,34 @@ pub fn os_kernel() {
 }
 
 pub fn task_create(f: fn()) {
-    unsafe {
-        let idx = SCHEDULER.task_cnt;
-        let stack_top = &STACK_TASK[idx] as *const u8 as u64 + ((param::STACK_SIZE-1) as u64);
-        SCHEDULER.ctx_task[idx].sp = stack_top;
-        SCHEDULER.ctx_task[idx].ra = f as u64;
-        SCHEDULER.task_cnt += 1;
-    }
+    let mut scheduler = SCHEDULER.lock();
+    let idx = scheduler.task_cnt;
+    let stack_top = &STACK_TASK[idx] as *const u8 as u64 + ((param::STACK_SIZE-1) as u64);
+    scheduler.ctx_task[idx].sp = stack_top;
+    scheduler.ctx_task[idx].ra = f as u64;
+    scheduler.task_cnt += 1;
 }
 
 pub fn task_go(i: usize) {
+    let (ctx_os,ctx_new) = {
+        let mut scheduler = SCHEDULER.lock();
+        (&mut scheduler.ctx_os as *mut Context,
+         &mut scheduler.ctx_task[i] as *mut Context)
+    };
     unsafe {
-        let mut ctx_os = &mut SCHEDULER.ctx_os;
-        let mut ctx_new = &mut SCHEDULER.ctx_task[i];
-        sys_switch(ctx_os as *mut Context,
-                   ctx_new as *mut Context);
+        sys_switch(ctx_os, ctx_new);
     }
 }
 
 pub fn task_os() {
+    let (ctx_os,ctx_now) = {
+        let mut scheduler = SCHEDULER.lock();
+        let i = scheduler.current_task;
+        (&mut scheduler.ctx_os as *mut Context,
+         &mut scheduler.ctx_task[i] as *mut Context)
+    };
     unsafe {
-        let mut ctx_os = &mut SCHEDULER.ctx_os;
-        let mut ctx_now = &mut SCHEDULER.ctx_task[SCHEDULER.current_task];
-        sys_switch(ctx_now as *mut Context,
-                   ctx_os as *mut Context);
+        sys_switch(ctx_now, ctx_os);
     }
 }
 
