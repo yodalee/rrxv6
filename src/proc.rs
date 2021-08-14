@@ -2,8 +2,6 @@
 //! User program
 
 use crate::uart;
-use crate::context::Context;
-use crate::param;
 use crate::util::delay;
 use crate::scheduler::{os_kernel, task_create};
 

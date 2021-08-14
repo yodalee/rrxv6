@@ -6,6 +6,7 @@
 
 extern crate alloc;
 
+mod kalloc;
 mod context;
 mod riscv;
 mod param;
@@ -15,19 +16,17 @@ mod scheduler;
 mod util;
 mod uart;
 mod memorylayout;
-mod memory;
 
 use crate::riscv::register::tp;
 use crate::scheduler::{Scheduler, task_go};
-use crate::context::Context;
 use crate::proc::user_init;
-use crate::memory::HeapAllocator;
+use crate::kalloc::init_heap;
 
 use lazy_static::lazy_static;
 use spin::Mutex;
-
-use core::default;
-use core::convert::TryInto;
+use linked_list_allocator::LockedHeap;
+use alloc::boxed::Box;
+use alloc::alloc::Layout;
 
 lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::default());
@@ -40,6 +39,9 @@ pub fn main() -> ! {
         m_uart.puts("rrxv6 start\n");
 
         user_init();
+        init_heap(); // physical memory allocator
+
+        let b = Box::new(64);
 
         loop {
             m_uart.puts("OS: Activate next task\n");
@@ -60,4 +62,9 @@ pub fn main() -> ! {
 }
 
 #[global_allocator]
-static ALLOCATOR: HeapAllocator = HeapAllocator;
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: Layout) -> ! {
+    panic!("allocation error {:?}", layout);
+}

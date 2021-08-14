@@ -29,5 +29,5 @@ pub const CLINT_MTIME : u64 = 0x200BFF8;
 
 // RAM from physical address 0x8000_0000 to PHYSTOP
 // 128 MB available
-pub const KERNELBASE : u64 = 0x8000_0000;
-pub const PHYSTOP : u64 = KERNELBASE + 128 * 1024 * 1024;
+pub const KERNELBASE : usize = 0x8000_0000;
+pub const PHYSTOP : usize = KERNELBASE + 128 * 1024 * 1024;
