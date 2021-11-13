@@ -15,6 +15,7 @@ use crate::riscv::register::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPC
 use crate::riscv::register::mscratch;
 use crate::riscv::register::mie;
 use crate::riscv::register::mtvec;
+use crate::uart;
 
 #[no_mangle]
 static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE * param::NCPU];
@@ -115,6 +116,8 @@ fn start() -> ! {
 }
 
 #[panic_handler]
-fn panic(_panic: &PanicInfo<'_>) -> ! {
+fn panic(panic_info: &PanicInfo<'_>) -> ! {
+    let m_uart = uart::read();
+    m_uart.puts(&format!("{}", panic_info));
     loop {}
 }
