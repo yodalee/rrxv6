@@ -14,9 +14,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // assemble the assembly file
     Build::new()
-        .file("src/entry.S")
-        .file("src/kernelvec.S")
-        .file("src/trampoline.S")
+        .file("src/asm/entry.S")
+        .file("src/asm/kernelvec.S")
+        .file("src/asm/trampoline.S")
         .compile("asm");
 
     // rebuild if `entry.s` changed
