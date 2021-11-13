@@ -1,20 +1,20 @@
 use core::panic::PanicInfo;
 
-use crate::{csrr, csrw};
-
 use crate::param;
 use crate::memorylayout;
-use crate::riscv::register::mstatus;
-use crate::riscv::register::mepc;
-use crate::riscv::register::tp;
-use crate::riscv::register::hartid;
-use crate::riscv::register::delegate;
-use crate::riscv::register::sie;
-use crate::riscv::register::interrupt::Interrupt;
-use crate::riscv::register::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
-use crate::riscv::register::mscratch;
-use crate::riscv::register::mie;
-use crate::riscv::register::mtvec;
+use rv64::csr::interrupt::Interrupt;
+use rv64::csr::medeleg::Medeleg;
+use rv64::csr::mepc::Mepc;
+use rv64::csr::mhartid::Mhartid;
+use rv64::csr::mideleg::Mideleg;
+use rv64::csr::mie::Mie;
+use rv64::csr::mscratch::Mscratch;
+use rv64::csr::mstatus;
+use rv64::csr::mtvec::Mtvec;
+use rv64::csr::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
+use rv64::csr::satp::Satp;
+use rv64::csr::sie::Sie;
+use rv64::register::tp;
 use crate::uart;
 
 #[no_mangle]
@@ -31,31 +31,30 @@ extern "C" {
 
 // setup timer and timer interrupt
 fn init_timer() {
-    let hartid = hartid::Mhartid::read().bits();
+    let mhartid = Mhartid::from_read().bits();
 
-    let mtimecmpaddr = memorylayout::CLINT_MTIMECMP + 8 * hartid;
+    let mtimecmpaddr = memorylayout::CLINT_MTIMECMP + 8 * mhartid;
     unsafe {
         let val = core::ptr::read_volatile(memorylayout::CLINT_MTIME as *mut u64);
         core::ptr::write_volatile(mtimecmpaddr as *mut u64, val + INTERVAL);
     }
     unsafe {
-        let arr = &mut TIMER_SCRATCH[hartid as usize];
+        let arr = &mut TIMER_SCRATCH[mhartid as usize];
         arr[3] = mtimecmpaddr;
         arr[4] = INTERVAL;
-        let mscratch = mscratch::Mscratch::from_bits(arr.as_ptr() as u64);
-        mscratch.write();
+        Mscratch::from_bits(arr.as_ptr() as u64).write();
     }
 
     // set the machine mode trap handler
-    let mtvec = mtvec::Mtvec::from_bits(timervec as u64);
+    let mtvec = Mtvec::from_bits(timervec as u64);
     mtvec.write();
 
     // Enable machine interrupt in mstatus
-    let mut ms = mstatus::read();
-    ms.enable_interrupt(mstatus::Mode::MachineMode);
-    mstatus::write(ms);
+    let mut mstatus = mstatus::Mstatus::from_read();
+    mstatus.enable_interrupt(mstatus::Mode::MachineMode);
+    mstatus.write();
 
-    let mut mie = mie::Mie::read();
+    let mut mie = Mie::from_read();
     mie.set_machine_enable(Interrupt::TimerInterrupt);
     mie.write();
 }
@@ -69,31 +68,29 @@ fn start() -> ! {
     /* Set M Previous Privilege mode to SupervisedMode
      * so mret will switch to supervise mode
      */
-    let mut ms = mstatus::read();
-    ms.set_mpp(mstatus::Mode::SupervisedMode);
-    mstatus::write(ms);
+    let mut mstatus = mstatus::Mstatus::from_read();
+    mstatus.set_mpp(mstatus::Mode::SupervisedMode);
+    mstatus.write();
 
     // Setup M exception program counter for mret
-    let m_mepc = mepc::Mepc::from_bits(main as u64);
-    mepc::write(m_mepc);
+    Mepc::from_bits(main as u64).write();
 
     // Disable paging for now
-    let x = 0;
-    csrw!("satp", x);
+    Satp::from_bits(0).write();
 
     // Delegate all interrupts and exceptions to supervisor mode
-    delegate::medeleg::write(0xffff);
-    delegate::mideleg::write(0xffff);
+    Medeleg::from_bits(0xffff).write();
+    Mideleg::from_bits(0xffff).write();
 
     // Enable interrupt in supervisor mode
-    let mut sie = sie::Sie::read();
+    let mut sie = Sie::from_read();
     sie.set_supervisor_enable(Interrupt::SoftwareInterrupt);
     sie.set_supervisor_enable(Interrupt::TimerInterrupt);
     sie.set_supervisor_enable(Interrupt::ExternalInterrupt);
     sie.write();
 
     // Store hart id in tp register, for cpuid()
-    let hartid = hartid::Mhartid::read().bits();
+    let hartid = Mhartid::from_read().bits();
     tp::write(hartid);
 
     init_timer();

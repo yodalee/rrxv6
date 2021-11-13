@@ -6,10 +6,10 @@
 
 #[macro_use]
 extern crate alloc;
+extern crate rv64;
 
 mod kalloc;
 mod context;
-mod riscv;
 mod param;
 mod start;
 mod proc;
@@ -18,7 +18,6 @@ mod util;
 mod uart;
 mod memorylayout;
 
-use crate::riscv::register::tp;
 use crate::scheduler::{Scheduler, task_go};
 use crate::proc::user_init;
 use crate::kalloc::init_heap;
@@ -28,6 +27,7 @@ use spin::Mutex;
 use linked_list_allocator::LockedHeap;
 use alloc::boxed::Box;
 use alloc::alloc::Layout;
+use rv64::register::tp;
 
 lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::default());
