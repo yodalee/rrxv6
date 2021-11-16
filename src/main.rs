@@ -1,6 +1,7 @@
 #![feature(asm)]
 #![feature(default_free_fn)]
 #![feature(alloc_error_handler)]
+#![feature(const_panic)]
 #![no_main]
 #![no_std]
 
@@ -18,6 +19,7 @@ mod scheduler;
 mod start;
 mod uart;
 mod util;
+mod vm;
 
 use crate::scheduler::{Scheduler, task_go};
 use crate::proc::user_init;
