@@ -8,15 +8,16 @@
 extern crate alloc;
 extern crate rv64;
 
-mod kalloc;
 mod context;
-mod param;
-mod start;
-mod proc;
-mod scheduler;
-mod util;
-mod uart;
+mod kalloc;
 mod memorylayout;
+mod param;
+mod proc;
+mod riscv;
+mod scheduler;
+mod start;
+mod uart;
+mod util;
 
 use crate::scheduler::{Scheduler, task_go};
 use crate::proc::user_init;

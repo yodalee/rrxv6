@@ -1,4 +1,3 @@
-
 //! Physical memory layout
 
 //! qemu -machine virt is set up like this,
@@ -19,8 +18,10 @@
 //! end -- start of kernel page allocation area
 //! PHYSTOP -- end RAM used by the kernel
 
+use crate::riscv;
+
 // qemu virt UART registers.
-pub const UART0: usize = 0x1000_0000;
+pub const UART0: u64 = 0x1000_0000;
 
 // core local interruptor (CLINT), which contains the timer
 pub const CLINT : u64 = 0x2000000;
@@ -29,5 +30,23 @@ pub const CLINT_MTIME : u64 = 0x200BFF8;
 
 // RAM from physical address 0x8000_0000 to PHYSTOP
 // 128 MB available
-pub const KERNELBASE : usize = 0x8000_0000;
-pub const PHYSTOP : usize = KERNELBASE + 128 * 1024 * 1024;
+pub const KERNELBASE : u64 = 0x8000_0000;
+pub const PHYSTOP : u64 = KERNELBASE + 128 * 1024 * 1024;
+
+// map the trampoline page to the highest address in both user and kernel space
+pub const TRAMPOLINE : u64 = riscv::MAXVA - riscv::PAGESIZE;
+
+// map kernel stacks beneath the trampoline,
+// each surrounded by invalid guard pages.
+pub const KSTACK : u64 = TRAMPOLINE - 2 * riscv::PAGESIZE;
+
+// User memory layout.
+// Address zero first:
+//   text
+//   original data and bss
+//   fixed-size stack
+//   expandable heap
+//   ...
+//   TRAPFRAME (p->trapframe, used by the trampoline)
+//   TRAMPOLINE (the same page as in the kernel)
+pub const TRAPFRAME : u64 = TRAMPOLINE - riscv::PAGESIZE;
