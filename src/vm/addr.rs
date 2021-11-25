@@ -1,4 +1,5 @@
 use bit_field::BitField;
+use super::page_table::PageTableIndex;
 
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
@@ -54,6 +55,31 @@ impl VirtAddr {
         Self(
             align_up(self.0, 4096)
         )
+    }
+
+    /// Return the 9 bits level 0 page table index from offset [12,20]
+    #[inline]
+    pub const fn p0_index(self) -> PageTableIndex {
+        PageTableIndex::new_truncate((self.0 >> 12) as u16)
+    }
+
+    /// Return the 9 bits level 1 page table index from offset [21,29]
+    #[inline]
+    pub const fn p1_index(self) -> PageTableIndex {
+        PageTableIndex::new_truncate((self.0 >> 9 >> 12) as u16)
+    }
+
+    /// Return the 9 bits level 2 page table index from offset [30,38]
+    #[inline]
+    pub const fn p2_index(self) -> PageTableIndex {
+        PageTableIndex::new_truncate((self.0 >> 9 >> 9 >> 12) as u16)
+    }
+
+    /// Return the 9 bits level 3 page table index from offset [39,47]
+    /// Only valid with sv47 mode
+    #[inline]
+    pub const fn p3_index(self) -> PageTableIndex {
+        PageTableIndex::new_truncate((self.0 >> 9 >> 9 >> 9 >> 12) as u16)
     }
 }
 

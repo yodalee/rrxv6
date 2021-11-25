@@ -5,6 +5,25 @@ use super::page_flag::PteFlag;
 // 4096 bytes / 8 bytes per entry = 512 entries
 const ENTRY_COUNT: usize = 512;
 
+
+/// A 9-bits index for page table
+pub struct PageTableIndex(u16);
+
+impl PageTableIndex {
+    /// Create a PageTableIndex from u16
+    /// Will crash if the input > 512
+    pub fn new(index: u16) -> Self {
+        assert!((index as usize) < ENTRY_COUNT);
+        Self (index)
+    }
+
+    /// Create a PageTableIndex from u16
+    /// Truncate the input if > 512
+    pub const fn new_truncate(index: u16) -> Self {
+        Self(index % ENTRY_COUNT as u16)
+    }
+}
+
 #[derive(Clone,Default)]
 pub struct PageTableEntry {
     entry: u64
