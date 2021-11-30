@@ -1,10 +1,10 @@
 //! riscv page table
 
+use core::ops::{Index, IndexMut};
 use super::page_flag::PteFlag;
 
 // 4096 bytes / 8 bytes per entry = 512 entries
 const ENTRY_COUNT: usize = 512;
-
 
 /// A 9-bits index for page table
 pub struct PageTableIndex(u16);
@@ -72,5 +72,37 @@ impl PageTable {
         Self {
             entries: [EMPTY;ENTRY_COUNT]
         }
+    }
+}
+
+impl Index<usize> for PageTable {
+    type Output = PageTableEntry;
+
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.entries[index]
+    }
+}
+
+impl IndexMut<usize> for PageTable {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.entries[index]
+    }
+}
+
+impl Index<PageTableIndex> for PageTable {
+    type Output = PageTableEntry;
+
+    #[inline]
+    fn index(&self, index: PageTableIndex) -> &Self::Output {
+        &self.entries[usize::from(index.0)]
+    }
+}
+
+impl IndexMut<PageTableIndex> for PageTable {
+    #[inline]
+    fn index_mut(&mut self, index: PageTableIndex) -> &mut Self::Output {
+        &mut self.entries[usize::from(index.0)]
     }
 }
