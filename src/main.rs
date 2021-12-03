@@ -11,6 +11,7 @@ extern crate rv64;
 
 mod context;
 mod kalloc;
+mod kvm;
 mod memorylayout;
 mod param;
 mod proc;
@@ -24,6 +25,7 @@ mod vm;
 use crate::scheduler::{Scheduler, task_go};
 use crate::proc::user_init;
 use crate::kalloc::init_heap;
+use crate::kvm::{init_kvm, init_page};
 
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -44,22 +46,9 @@ pub fn main() -> ! {
 
         user_init();
         init_heap(); // physical memory allocator
+        init_kvm();
 
-        let b = Box::new(64);
-
-        loop {
-            m_uart.puts("OS: Activate next task\n");
-            let idx = {
-                let scheduler = SCHEDULER.lock();
-                scheduler.current_task
-            };
-            task_go(idx);
-            {
-                let mut scheduler = SCHEDULER.lock();
-                scheduler.current_task = (scheduler.current_task + 1) % scheduler.task_cnt;
-            }
-            m_uart.puts("OS: Back to OS\n\n");
-        }
+        m_uart.puts("OS started\n");
     }
 
     loop {}
