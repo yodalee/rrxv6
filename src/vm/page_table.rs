@@ -24,6 +24,30 @@ impl PageTableIndex {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PageTableLevel {
+    /// Level 0, table of page
+    Zero = 0,
+    /// Level 1, table of page table
+    One,
+    /// Level 2, table of level 1 page table
+    Two,
+    /// Level 3, table of level 2 page table, only valid in sv48 mode
+    Three,
+}
+
+impl PageTableLevel {
+    /// Return the next level
+    pub const fn next_level(self) -> Option<Self> {
+        match self {
+            PageTableLevel::Three => Some(PageTableLevel::Two),
+            PageTableLevel::Two   => Some(PageTableLevel::One),
+            PageTableLevel::One   => Some(PageTableLevel::Zero),
+            PageTableLevel::Zero  => None,
+        }
+    }
+}
+
 #[derive(Clone,Default)]
 pub struct PageTableEntry {
     entry: u64

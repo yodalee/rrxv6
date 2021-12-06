@@ -1,5 +1,5 @@
 use bit_field::BitField;
-use super::page_table::PageTableIndex;
+use super::page_table::{PageTableIndex, PageTableLevel};
 
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
@@ -80,6 +80,17 @@ impl VirtAddr {
     #[inline]
     pub const fn p3_index(self) -> PageTableIndex {
         PageTableIndex::new_truncate((self.0 >> 9 >> 9 >> 9 >> 12) as u16)
+    }
+
+    /// Return the 9 bits page table index according to level
+    #[inline]
+    pub const fn get_index(self, level: PageTableLevel) -> PageTableIndex {
+        match level {
+            PageTableLevel::Zero  => self.p0_index(),
+            PageTableLevel::One   => self.p1_index(),
+            PageTableLevel::Two   => self.p2_index(),
+            PageTableLevel::Three => self.p3_index(),
+        }
     }
 }
 
