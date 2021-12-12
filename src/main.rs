@@ -47,6 +47,7 @@ pub fn main() -> ! {
         user_init();
         init_heap(); // physical memory allocator
         init_kvm();
+        init_page();
 
         m_uart.puts("OS started\n");
     }

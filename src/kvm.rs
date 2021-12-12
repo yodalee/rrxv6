@@ -7,7 +7,7 @@ use crate::vm::page_table::{PageTable, PageTableEntry, PageTableLevel};
 use crate::vm::addr::{VirtAddr, PhysAddr};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
-use crate::memorylayout::TRAMPOLINE;
+use crate::memorylayout::{UART0, TRAMPOLINE, KERNELBASE, PHYSTOP};
 use crate::kalloc::kalloc;
 
 use core::ptr::write_bytes;
@@ -19,13 +19,27 @@ lazy_static! {
 pub fn init_kvm() {
     extern "C" {
         static _trampoline: usize;
+        static _etext: usize;
     }
     let ptrampoline: u64 = unsafe { &_trampoline as *const usize as u64 };
+    let petext: u64 = unsafe { &_etext as *const usize as u64 };
 
     let root_page: &mut PageTable = unsafe { &mut *(kalloc() as *mut PageTable) };
     let mut root_page_lock = KERNELPAGE.lock();
     *root_page_lock = root_page as *const _ as u64;
     drop(root_page_lock); // remember to drop the lock
+
+    // map UART registers
+    kvmmap(VirtAddr::new(UART0), PhysAddr::new(UART0), PAGESIZE,
+           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+
+    // map kernel text read and executable
+    kvmmap(VirtAddr::new(KERNELBASE), PhysAddr::new(KERNELBASE), petext - KERNELBASE,
+           PteFlag::PTE_READ | PteFlag::PTE_EXEC);
+
+    // map kernel data and physical ram
+    kvmmap(VirtAddr::new(petext), PhysAddr::new(petext), PHYSTOP as u64 - petext,
+           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
 
     // map the trampoline to the highest virtual address in the kernel
     // for trap enter/exit
