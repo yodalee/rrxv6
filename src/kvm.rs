@@ -3,14 +3,12 @@ use spin::Mutex;
 use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
-use crate::vm::page_table::{PageTable, PageTableEntry, PageTableLevel};
+use crate::vm::page_table::{PageTable, PageTableLevel};
 use crate::vm::addr::{VirtAddr, PhysAddr};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
 use crate::memorylayout::{UART0, TRAMPOLINE, KERNELBASE, PHYSTOP};
 use crate::kalloc::kalloc;
-
-use core::ptr::write_bytes;
 
 lazy_static! {
     static ref KERNELPAGE: Mutex<u64> = Mutex::new(0);
@@ -81,7 +79,7 @@ fn map_pages(va: VirtAddr, mut pa: PhysAddr, size: u64, perm: PteFlag) -> Result
     let va_end = VirtAddr::new_truncate(va.as_u64() + size - 1).align_down();
     let mut page_addr = va_start;
 
-    while true {
+    loop {
         map_page(page_table, page_addr, pa, perm, PageTableLevel::Two)?;
         if page_addr == va_end {
             break;
