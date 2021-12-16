@@ -17,6 +17,7 @@ mod param;
 mod proc;
 mod riscv;
 mod start;
+mod trap;
 mod uart;
 mod vm;
 
@@ -25,6 +26,7 @@ use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::proc::init_proc;
 use crate::uart::UART;
+use crate::trap::init_harttrap;
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -36,10 +38,11 @@ pub fn main() -> ! {
         m_uart.puts("rrxv6 start\n");
         drop(m_uart);
 
-        init_heap(); // initialize physical memory allocator
-        init_kvm();  // initialize kernel page table
-        init_page(); // initialize virtual memory
-        init_proc(); // initialize process table
+        init_heap();     // initialize physical memory allocator
+        init_kvm();      // initialize kernel page table
+        init_page();     // initialize virtual memory
+        init_proc();     // initialize process table
+        init_harttrap(); // install kernel trap vector
 
         let mut m_uart = UART.lock();
         m_uart.puts("OS started\n");
