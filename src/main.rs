@@ -9,6 +9,7 @@
 extern crate alloc;
 extern crate rv64;
 
+mod cpu;
 mod kalloc;
 mod kvm;
 mod memorylayout;
@@ -19,17 +20,17 @@ mod start;
 mod uart;
 mod vm;
 
-use crate::proc::init_proc;
+use crate::cpu::get_cpuid;
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
+use crate::proc::init_proc;
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
-use rv64::register::tp;
 
 #[no_mangle]
 pub fn main() -> ! {
-    if tp::read() == 0 {
+    if get_cpuid() == 0 {
         let m_uart = uart::read();
         m_uart.puts("rrxv6 start\n");
 
