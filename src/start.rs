@@ -34,7 +34,7 @@ extern "C" {
 fn init_timer() {
     let mhartid = Mhartid::from_read().bits();
 
-    let mtimecmpaddr = memorylayout::CLINT_MTIMECMP + 8 * mhartid;
+    let mtimecmpaddr = memorylayout::clint_mtimecmp(mhartid);
     unsafe {
         let val = core::ptr::read_volatile(memorylayout::CLINT_MTIME as *mut u64);
         core::ptr::write_volatile(mtimecmpaddr as *mut u64, val + INTERVAL);

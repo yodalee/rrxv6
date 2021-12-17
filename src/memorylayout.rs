@@ -21,12 +21,26 @@
 use crate::riscv;
 
 // qemu virt UART registers.
-pub const UART0: u64 = 0x1000_0000;
+pub const UART0 : u64 = 0x1000_0000;
+pub const UART0_IRQ : u64 = 10;
+
+// virtio mmio interface
+pub const VIRTIO0 : u64 = 0x10001000;
+pub const VIRTIO0_IRQ : u64 = 1;
 
 // core local interruptor (CLINT), which contains the timer
 pub const CLINT : u64 = 0x2000000;
-pub const CLINT_MTIMECMP : u64 = CLINT + 0x4000;
 pub const CLINT_MTIME : u64 = 0x200BFF8;
+#[inline]
+pub fn clint_mtimecmp(hart: u64) -> u64 { CLINT + 0x4000 + 8 * hart }
+
+// qemu puts platform-level interrupt controller (PLIC) here.
+pub const PLIC : u64 = 0x0c000000;
+pub const PLIC_PRIORITY  : u64 = PLIC + 0x0;
+pub const PLIC_PENDING   : u64 = PLIC + 0x1_000;
+pub const PLIC_ENABLE    : u64 = PLIC + 0x2_000;
+pub const PLIC_THRESHOLD : u64 = PLIC + 0x200_000;
+pub const PLIC_CLAIM     : u64 = PLIC + 0x200_004;
 
 // RAM from physical address 0x8000_0000 to PHYSTOP
 // 128 MB available
