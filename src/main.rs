@@ -14,6 +14,7 @@ mod kalloc;
 mod kvm;
 mod memorylayout;
 mod param;
+mod plic;
 mod proc;
 mod riscv;
 mod start;
@@ -24,6 +25,7 @@ mod vm;
 use crate::cpu::get_cpuid;
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
+use crate::plic::{init_plic, init_hartplic};
 use crate::proc::init_proc;
 use crate::uart::UART;
 use crate::trap::init_harttrap;
@@ -43,6 +45,8 @@ pub fn main() -> ! {
         init_page();     // initialize virtual memory
         init_proc();     // initialize process table
         init_harttrap(); // install kernel trap vector
+        init_plic();     // initialize PLIC interrupt controller
+        init_hartplic(); // ask PLIC for device interrupt
 
         let mut m_uart = UART.lock();
         m_uart.puts("OS started\n");

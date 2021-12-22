@@ -7,7 +7,7 @@ use crate::vm::page_table::{PageTable, PageTableLevel};
 use crate::vm::addr::{VirtAddr, PhysAddr};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
-use crate::memorylayout::{UART0, TRAMPOLINE, KERNELBASE, PHYSTOP};
+use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, KERNELBASE, PHYSTOP};
 use crate::kalloc::kalloc;
 
 lazy_static! {
@@ -30,6 +30,9 @@ pub fn init_kvm() {
     // map UART registers
     kvmmap(VirtAddr::new(UART0), PhysAddr::new(UART0), PAGESIZE,
            PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+
+    // map PLIC registers
+    kvmmap(VirtAddr::new(PLIC_BASE), PhysAddr::new(PLIC_BASE), 0x400000, PteFlag::PTE_READ | PteFlag::PTE_WRITE);
 
     // map kernel text read and executable
     kvmmap(VirtAddr::new(KERNELBASE), PhysAddr::new(KERNELBASE), petext - KERNELBASE,

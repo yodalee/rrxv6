@@ -35,12 +35,12 @@ pub const CLINT_MTIME : u64 = 0x200BFF8;
 pub fn clint_mtimecmp(hart: u64) -> u64 { CLINT + 0x4000 + 8 * hart }
 
 // qemu puts platform-level interrupt controller (PLIC) here.
-pub const PLIC : u64 = 0x0c000000;
-pub const PLIC_PRIORITY  : u64 = PLIC + 0x0;
-pub const PLIC_PENDING   : u64 = PLIC + 0x1_000;
-pub const PLIC_ENABLE    : u64 = PLIC + 0x2_000;
-pub const PLIC_THRESHOLD : u64 = PLIC + 0x200_000;
-pub const PLIC_CLAIM     : u64 = PLIC + 0x200_004;
+pub const PLIC_BASE      : u64 = 0x0c000000;
+pub const PLIC_PRIORITY  : u64 = PLIC_BASE + 0x0;
+pub const PLIC_PENDING   : u64 = PLIC_BASE + 0x1_000;
+pub const PLIC_ENABLE    : u64 = PLIC_BASE + 0x2_000;
+pub const PLIC_THRESHOLD : u64 = PLIC_BASE + 0x200_000;
+pub const PLIC_CLAIM     : u64 = PLIC_BASE + 0x200_004;
 
 // RAM from physical address 0x8000_0000 to PHYSTOP
 // 128 MB available
