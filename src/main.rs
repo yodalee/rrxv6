@@ -24,6 +24,7 @@ use crate::cpu::get_cpuid;
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::proc::init_proc;
+use crate::uart::UART;
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -31,15 +32,18 @@ use alloc::alloc::Layout;
 #[no_mangle]
 pub fn main() -> ! {
     if get_cpuid() == 0 {
-        let m_uart = uart::read();
+        let mut m_uart = UART.lock();
         m_uart.puts("rrxv6 start\n");
+        drop(m_uart);
 
         init_heap(); // initialize physical memory allocator
         init_kvm();  // initialize kernel page table
         init_page(); // initialize virtual memory
         init_proc(); // initialize process table
 
+        let mut m_uart = UART.lock();
         m_uart.puts("OS started\n");
+        drop(m_uart);
     }
 
     loop {}

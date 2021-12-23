@@ -2,6 +2,8 @@ use core::panic::PanicInfo;
 
 use crate::param;
 use crate::memorylayout;
+use crate::uart::UART;
+
 use rv64::csr::interrupt::Interrupt;
 use rv64::csr::medeleg::Medeleg;
 use rv64::csr::mepc::Mepc;
@@ -15,7 +17,6 @@ use rv64::csr::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
 use rv64::csr::satp::Satp;
 use rv64::csr::sie::Sie;
 use rv64::register::tp;
-use crate::uart;
 
 #[no_mangle]
 static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE * param::NCPU];
@@ -114,7 +115,7 @@ fn start() -> ! {
 
 #[panic_handler]
 fn panic(panic_info: &PanicInfo<'_>) -> ! {
-    let m_uart = uart::read();
+    let mut m_uart = UART.lock();
     m_uart.puts(&format!("{}", panic_info));
     loop {}
 }
