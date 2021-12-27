@@ -28,7 +28,7 @@ use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::proc::init_proc;
 use crate::uart::UART;
-use crate::trap::init_harttrap;
+use crate::trap::{init_harttrap, intr_on, intr_off};
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -52,6 +52,7 @@ pub fn main() -> ! {
         m_uart.puts("OS started\n");
         drop(m_uart);
     }
+    intr_on();
 
     loop {}
 }
