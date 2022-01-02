@@ -92,9 +92,31 @@ impl Uart {
         }
     }
 
+    fn readc(&mut self) -> Option<u8> {
+        if (self.p.lsr.read() & 0x01) != 0 {
+            unsafe {
+                Some(self.p.thr.read())
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn set_interrupt(&mut self, flag: IerFlag) {
         unsafe {
             self.p.ier.write(flag.bits());
+        }
+    }
+
+    /// Handle an uart interrupt
+    /// can be RX interrupt or TX interrupt
+    pub fn handle_interrupt(&mut self) {
+        // read input character
+        while true {
+            match self.readc() {
+                Some(c) => {},
+                None => break,
+            }
         }
     }
 }
