@@ -15,6 +15,7 @@ mod kvm;
 mod memorylayout;
 mod param;
 mod plic;
+mod print;
 mod proc;
 mod riscv;
 mod start;
@@ -26,8 +27,8 @@ use crate::cpu::get_cpuid;
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
+use crate::print::println;
 use crate::proc::init_proc;
-use crate::uart::UART;
 use crate::trap::{init_harttrap, intr_on};
 
 use linked_list_allocator::LockedHeap;
@@ -36,9 +37,7 @@ use alloc::alloc::Layout;
 #[no_mangle]
 pub fn main() -> ! {
     if get_cpuid() == 0 {
-        let mut m_uart = UART.lock();
-        m_uart.puts("rrxv6 start\n");
-        drop(m_uart);
+        println("rrxv6 start");
 
         init_heap();     // initialize physical memory allocator
         init_kvm();      // initialize kernel page table
@@ -48,9 +47,7 @@ pub fn main() -> ! {
         init_plic();     // initialize PLIC interrupt controller
         init_hartplic(); // ask PLIC for device interrupt
 
-        let mut m_uart = UART.lock();
-        m_uart.puts("OS started\n");
-        drop(m_uart);
+        println("OS started");
     }
     intr_on();
 

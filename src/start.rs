@@ -1,8 +1,5 @@
-use core::panic::PanicInfo;
-
-use crate::param;
 use crate::memorylayout;
-use crate::uart::UART;
+use crate::param;
 
 use rv64::csr::interrupt::Interrupt;
 use rv64::csr::medeleg::Medeleg;
@@ -110,12 +107,5 @@ fn start() -> ! {
     unsafe { asm!("mret"); }
 
     // mret will jump into kernel, should not execute to here
-    loop {}
-}
-
-#[panic_handler]
-fn panic(panic_info: &PanicInfo<'_>) -> ! {
-    let mut m_uart = UART.lock();
-    m_uart.puts(&format!("{}", panic_info));
     loop {}
 }
