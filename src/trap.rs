@@ -6,12 +6,12 @@ use rv64::csr::sip::Sip;
 
 use lazy_static::lazy_static;
 use spin::Mutex;
-use bit_field::BitField;
 
 use crate::cpu::get_cpuid;
 use crate::riscv::Interrupt;
 use crate::uart::UART;
 use crate::plic::{Plic, PlicContext};
+use crate::memorylayout::UART0_IRQ;
 
 lazy_static! {
     static ref TICK: Mutex<u64> = Mutex::new(0);
@@ -47,11 +47,12 @@ fn handle_external_interrupt() {
     let hart = get_cpuid();
     let irq = plic.get_claim(hart, PlicContext::Supervisor);
 
-    match irq {
+    match irq as u64 {
         UART0_IRQ => {
             let mut uart = UART.lock();
             uart.handle_interrupt();
-        }
+        },
+        _ => {},
     }
 
     if irq != 0 {

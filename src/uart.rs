@@ -9,7 +9,7 @@ lazy_static! {
 }
 
 bitflags! {
-    struct IerFlag: u8 {
+    pub struct IerFlag: u8 {
         const DISABLE = 0;
         const RX_ENABLE = 1 << 0;
         const TX_ENABLE = 1 << 1;
@@ -94,9 +94,7 @@ impl Uart {
 
     fn readc(&mut self) -> Option<u8> {
         if (self.p.lsr.read() & 0x01) != 0 {
-            unsafe {
-                Some(self.p.thr.read())
-            }
+            Some(self.p.thr.read())
         } else {
             None
         }
@@ -112,9 +110,9 @@ impl Uart {
     /// can be RX interrupt or TX interrupt
     pub fn handle_interrupt(&mut self) {
         // read input character
-        while true {
+        loop {
             match self.readc() {
-                Some(c) => {},
+                Some(_c) => {},
                 None => break,
             }
         }

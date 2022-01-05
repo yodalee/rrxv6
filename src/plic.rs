@@ -1,7 +1,7 @@
 //! the riscv Platform Level Interrupt Controller (PLIC).
 
 use crate::cpu::get_cpuid;
-use crate::memorylayout::{PLIC_BASE, PLIC_ENABLE, PLIC_THRESHOLD, PLIC_CLAIM, UART0_IRQ, VIRTIO0_IRQ};
+use crate::memorylayout::{PLIC_PRIORITY, PLIC_ENABLE, PLIC_THRESHOLD, PLIC_CLAIM, UART0_IRQ, VIRTIO0_IRQ};
 use crate::riscv::MAX_INTERRUPT;
 
 pub enum PlicContext {
@@ -20,7 +20,7 @@ impl Plic {
 
     /// set id interrupt priority, zero is disabled
     pub fn set_priority(&self, id: u64, priority: u32) {
-        let addr = (PLIC_BASE + 4 * id) as *mut u32;
+        let addr = (PLIC_PRIORITY + 4 * id) as *mut u32;
         unsafe {
             core::ptr::write_volatile(addr, priority);
         }
