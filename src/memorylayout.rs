@@ -52,7 +52,10 @@ pub const TRAMPOLINE : u64 = riscv::MAXVA - riscv::PAGESIZE;
 
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
-pub const KSTACK : u64 = TRAMPOLINE - 2 * riscv::PAGESIZE;
+#[inline]
+pub fn kstack(proc_id: u64) -> u64 {
+    TRAMPOLINE - (proc_id + 1) * 2 * riscv::PAGESIZE
+}
 
 // User memory layout.
 // Address zero first:

@@ -5,8 +5,9 @@ use crate::vm::page_table::{PageTable, PageTableLevel};
 use crate::vm::addr::{VirtAddr, PhysAddr};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
-use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, KERNELBASE, PHYSTOP};
+use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, KERNELBASE, PHYSTOP, kstack};
 use crate::kalloc::kalloc;
+use crate::param::NPROC;
 
 static mut KERNELPAGE: Option<&mut PageTable> = None;
 
@@ -40,6 +41,17 @@ pub fn init_kvm() {
     // for trap enter/exit
     kvmmap(VirtAddr::new(TRAMPOLINE), PhysAddr::new(ptrampoline), PAGESIZE,
            PteFlag::PTE_READ | PteFlag::PTE_EXEC);
+
+    // alloc and map stack for kernel process
+    for i in 0u64..NPROC as u64 {
+        let ptr = kalloc();
+        if ptr == 0 as *mut u8 {
+            panic!("kalloc failed in alloc proc stack");
+        }
+        let pa = PhysAddr::new(ptr as *const _ as u64);
+        let va = VirtAddr::new(kstack(i));
+        kvmmap(va, pa, PAGESIZE, PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+    }
 }
 
 pub fn init_page() {

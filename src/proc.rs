@@ -1,5 +1,6 @@
 //! kernel process table
 
+use crate::memorylayout::kstack;
 use crate::param::{NPROC, LEN_PROCNAME};
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -36,4 +37,8 @@ lazy_static! {
 
 /// initialize kernel process stack
 pub fn init_proc() {
+    for i in 0..NPROC {
+        let mut proc = PROC[i].lock();
+        proc.kstack = kstack(i as u64);
+    }
 }
