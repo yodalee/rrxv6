@@ -1,5 +1,6 @@
 use volatile_register::RW;
 use crate::memorylayout;
+use crate::param::UART_TX_BUF_SIZE;
 use bitflags::bitflags;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -30,10 +31,6 @@ bitflags! {
     }
 }
 
-pub struct Uart {
-    p: &'static mut UartRegister
-}
-
 #[repr(C)]
 struct UartRegister {
     thr: RW<u8>,
@@ -46,9 +43,19 @@ struct UartRegister {
     spr: RW<u8>,
 }
 
+pub struct Uart {
+    tx_buf: [char;UART_TX_BUF_SIZE],
+    write_idx: usize,
+    read_idx: usize,
+    p: &'static mut UartRegister,
+}
+
 impl Uart {
     fn new() -> Self {
         let mut uart = Uart {
+            tx_buf: ['\0';UART_TX_BUF_SIZE],
+            write_idx: 0,
+            read_idx: 0,
             p: unsafe { &mut *(memorylayout::UART0 as *mut UartRegister) },
         };
         uart.init();
@@ -80,7 +87,7 @@ impl Uart {
     }
 
     pub fn putc(&mut self, c: char) {
-        while (self.p.lsr.read() & 0x40) == 0 {}
+        while (self.p.lsr.read() & 0x20) == 0 {}
         unsafe {
             self.p.thr.write(c as u8);
         }
@@ -89,6 +96,26 @@ impl Uart {
     pub fn puts(&mut self, s: &str) {
         for c in s.chars() {
             self.putc(c);
+        }
+    }
+
+    /// Write one character from transmit buffer if UART is idle
+    /// Return if there is no characters in buffer.
+    pub fn put_bufferc(&mut self) {
+        if self.write_idx == self.read_idx {
+            // no character in buffer
+            return;
+        }
+        if (self.p.lsr.read() & 0x20) == 0 {
+            // the UART transmit holding register is full,
+            // it will interrupt us if it's ready.
+            return;
+        }
+        let c = self.tx_buf[self.read_idx];
+        self.read_idx = (self.read_idx + 1) % UART_TX_BUF_SIZE;
+
+        unsafe {
+            self.p.thr.write(c as u8);
         }
     }
 
@@ -116,5 +143,8 @@ impl Uart {
                 None => break,
             }
         }
+
+        // write output character
+        self.put_bufferc();
     }
 }
