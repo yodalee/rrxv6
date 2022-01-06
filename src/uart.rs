@@ -1,6 +1,8 @@
-use volatile_register::RW;
+use crate::console::CONSOLE;
 use crate::memorylayout;
 use crate::param::UART_TX_BUF_SIZE;
+
+use volatile_register::RW;
 use bitflags::bitflags;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -119,9 +121,9 @@ impl Uart {
         }
     }
 
-    fn readc(&mut self) -> Option<u8> {
+    fn readc(&mut self) -> Option<char> {
         if (self.p.lsr.read() & 0x01) != 0 {
-            Some(self.p.thr.read())
+            Some(self.p.thr.read() as char)
         } else {
             None
         }
@@ -139,7 +141,10 @@ impl Uart {
         // read input character
         loop {
             match self.readc() {
-                Some(_c) => {},
+                Some(c) => {
+                    let mut console = CONSOLE.lock();
+                    console.console_interrupt(c, self);
+                },
                 None => break,
             }
         }

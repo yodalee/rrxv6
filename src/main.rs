@@ -9,6 +9,7 @@
 extern crate alloc;
 extern crate rv64;
 
+mod console;
 mod cpu;
 mod kalloc;
 mod kvm;
