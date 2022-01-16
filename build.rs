@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .file("src/asm/entry.S")
         .file("src/asm/kernelvec.S")
         .file("src/asm/trampoline.S")
+        .file("src/asm/switch.S")
         .compile("asm");
 
     // rebuild if `entry.s` changed
