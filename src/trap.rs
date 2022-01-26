@@ -7,7 +7,7 @@ use rv64::csr::sip::Sip;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::cpu::get_cpuid;
+use crate::cpu::{get_cpu, get_cpuid};
 use crate::riscv::Interrupt;
 use crate::uart::UART;
 use crate::plic::{Plic, PlicContext};
@@ -40,6 +40,44 @@ pub fn intr_off() {
     let mut sstatus = Sstatus::from_read();
     sstatus.disable_interrupt(Mode::SupervisedMode);
     sstatus.write();
+}
+
+/// get device interrupt status
+pub fn intr_get() -> bool {
+    let sstatus = Sstatus::from_read();
+    sstatus.get_sie()
+}
+
+/// push_off, like intr_off but required same number of pop_off to make interrupt on.
+pub fn push_off() {
+    let intr = intr_get();
+    let cpu = get_cpu();
+    let mut push_count = cpu.push_count.lock();
+    intr_off();
+    if *push_count == 0 {
+        let mut base = cpu.interrupt_base.lock();
+        *base = intr;
+    }
+    *push_count = *push_count + 1;
+}
+
+/// pop_off, cancel one push_off
+/// Calling pop_off without push_off will panic
+pub fn pop_off() {
+    let cpu = get_cpu();
+    let intr = intr_get();
+    let mut push_count = cpu.push_count.lock();
+    let interrupt_base = cpu.interrupt_base.lock();
+    if intr {
+        panic!("pop_off: interruptible");
+    }
+    if *push_count < 1 {
+        panic!("pop_off: stack empty");
+    }
+    *push_count = *push_count - 1;
+    if *push_count == 0 && *interrupt_base {
+        intr_on();
+    }
 }
 
 fn handle_external_interrupt() {

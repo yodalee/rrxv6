@@ -1,10 +1,15 @@
 use core::panic::PanicInfo;
+use crate::trap::{push_off, pop_off};
 use crate::uart::UART;
 
 pub fn println(s: &str) {
-    let mut m_uart = UART.lock();
-    m_uart.puts(s);
-    m_uart.putc('\n');
+    push_off();
+    {
+        let mut m_uart = UART.lock();
+        m_uart.puts(s);
+        m_uart.putc('\n');
+    }
+    pop_off();
 }
 
 #[panic_handler]
