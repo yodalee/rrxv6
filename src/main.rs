@@ -21,6 +21,7 @@ mod plic;
 mod print;
 mod proc;
 mod riscv;
+mod scheduler;
 mod start;
 mod trap;
 mod uart;
@@ -32,7 +33,8 @@ use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::print::println;
 use crate::proc::init_proc;
-use crate::trap::{init_harttrap, intr_on};
+use crate::scheduler::{init_scheduler, get_scheduler};
+use crate::trap::init_harttrap;
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -42,19 +44,21 @@ pub fn main() -> ! {
     if get_cpuid() == 0 {
         println("rrxv6 start");
 
-        init_heap();     // initialize physical memory allocator
-        init_kvm();      // initialize kernel page table
-        init_page();     // initialize virtual memory
-        init_proc();     // initialize process table
-        init_harttrap(); // install kernel trap vector
-        init_plic();     // initialize PLIC interrupt controller
-        init_hartplic(); // ask PLIC for device interrupt
+        init_heap();      // initialize physical memory allocator
+        init_kvm();       // initialize kernel page table
+        init_page();      // initialize virtual memory
+        init_proc();      // initialize process table
+        init_harttrap();  // install kernel trap vector
+        init_plic();      // initialize PLIC interrupt controller
+        init_hartplic();  // ask PLIC for device interrupt
+        init_scheduler(); // initialize scheduler for schedule
 
         println("OS started");
     }
-    intr_on();
 
-    loop {}
+    let scheduler = get_scheduler();
+    // start scheduling, this function shall not return
+    scheduler.schedule();
 }
 
 #[global_allocator]
