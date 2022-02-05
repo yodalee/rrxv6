@@ -1,5 +1,3 @@
-use lazy_static::lazy_static;
-use spin::Mutex;
 use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
@@ -10,9 +8,7 @@ use crate::riscv::{PAGESIZE, MAXVA};
 use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, KERNELBASE, PHYSTOP};
 use crate::kalloc::kalloc;
 
-lazy_static! {
-    static ref KERNELPAGE: Mutex<u64> = Mutex::new(0);
-}
+static mut KERNELPAGE: Option<&mut PageTable> = None;
 
 pub fn init_kvm() {
     extern "C" {
@@ -21,11 +17,9 @@ pub fn init_kvm() {
     }
     let ptrampoline: u64 = unsafe { &_trampoline as *const usize as u64 };
     let petext: u64 = unsafe { &_etext as *const usize as u64 };
-
-    let root_page: &mut PageTable = unsafe { &mut *(kalloc() as *mut PageTable) };
-    let mut root_page_lock = KERNELPAGE.lock();
-    *root_page_lock = root_page as *const _ as u64;
-    drop(root_page_lock); // remember to drop the lock
+    unsafe {
+        KERNELPAGE = Some(&mut *(kalloc() as *mut PageTable));
+    }
 
     // map UART registers
     kvmmap(VirtAddr::new(UART0), PhysAddr::new(UART0), PAGESIZE,
@@ -58,9 +52,7 @@ pub fn init_page() {
 }
 
 pub unsafe fn get_root_page() -> &'static mut PageTable {
-    let addr = *KERNELPAGE.lock();
-    let ptr: *mut PageTable = addr as *mut PageTable;
-    &mut *ptr
+    KERNELPAGE.as_mut().unwrap()
 }
 
 /// Add a mapping to the kernel page table.
