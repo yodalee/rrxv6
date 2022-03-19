@@ -13,6 +13,7 @@ mod console;
 mod cpu;
 mod kalloc;
 mod kvm;
+mod list;
 mod memorylayout;
 mod param;
 mod plic;
