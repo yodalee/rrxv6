@@ -3,8 +3,9 @@
 use crate::context::Context;
 use crate::memorylayout::kstack;
 use crate::param::{NPROC, LEN_PROCNAME};
-use lazy_static::lazy_static;
-use spin::Mutex;
+use crate::scheduler::get_scheduler;
+use alloc::boxed::Box;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Process state
 #[derive(Eq,PartialEq)]
@@ -13,50 +14,39 @@ pub enum ProcState {
     RUNNING,
 }
 
-struct PidGenerator {
-    gen: Mutex<usize>
-}
-
-impl PidGenerator {
-    fn next(&self) -> usize {
-        let mut i = self.gen.lock();
-        let pid = *i;
-        *i = *i + 1;
-        pid
-    }
+pub fn get_pid() -> usize {
+    static PID_GENERATOR: AtomicUsize = AtomicUsize::new(0);
+    let pid = PID_GENERATOR.fetch_add(1, Ordering::Relaxed);
+    pid
 }
 
 pub struct Proc {
-    state: ProcState,
-    context: Context,
-    kstack: u64,
-    pid: usize,
-    name: [char;LEN_PROCNAME],
+    pub state: ProcState,
+    pub context: Context,
+    pub kstack: u64,
+    pub pid: usize,
+    pub name: [char;LEN_PROCNAME],
 }
 
 impl Proc {
-    pub const fn new() -> Self {
+    pub fn new(kstack: u64) -> Self {
         Self {
             state: ProcState::RUNNABLE,
             context: Context::new(),
-            kstack: 0,
+            kstack,
             pid: 0,
             name: ['\0';LEN_PROCNAME],
         }
     }
 }
 
-lazy_static! {
-    pub static ref PROC: [Mutex<Proc>;NPROC] = {
-        const INIT_PROC: Mutex<Proc> = Mutex::new(Proc::new());
-        [INIT_PROC;NPROC]
-    };
-}
-
 /// initialize kernel process stack
 pub fn init_proc() {
+    let scheduler = get_scheduler();
     for i in 0..NPROC {
-        let mut proc = PROC[i].lock();
-        proc.kstack = kstack(i as u64);
+        let mut proc = Box::new(Proc::new(
+            kstack(i as u64)
+        ));
+        scheduler.unused.push(proc)
     }
 }
