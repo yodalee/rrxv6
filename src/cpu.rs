@@ -6,6 +6,7 @@ use spin::Mutex;
 use crate::context::Context;
 use crate::param::NCPU;
 use crate::proc::Proc;
+use crate::trap::{push_off, pop_off};
 use alloc::boxed::Box;
 use core::ptr;
 
@@ -52,4 +53,12 @@ pub fn get_cpu() -> &'static mut Cpu {
     unsafe {
         CPU[id].as_mut().unwrap()
     }
+}
+
+pub fn get_proc() -> *const Box<Proc> {
+    push_off();
+    let cpu = get_cpu();
+    let proc = cpu.proc;
+    pop_off();
+    proc
 }

@@ -55,6 +55,7 @@ impl Scheduler {
 
     pub fn schedule(&self) -> ! {
         loop {
+            intr_on();
             match self.next() {
                 Some(mut proc) => {
                     let cpu = get_cpu();

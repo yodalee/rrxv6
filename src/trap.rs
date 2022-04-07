@@ -7,11 +7,13 @@ use rv64::csr::sip::Sip;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::cpu::{get_cpu, get_cpuid};
+use crate::cpu::{get_cpu, get_cpuid, get_proc};
 use crate::riscv::Interrupt;
 use crate::uart::UART;
 use crate::plic::{Plic, PlicContext};
 use crate::memorylayout::UART0_IRQ;
+use crate::scheduler::yield_proc;
+use crate::proc::ProcState;
 
 lazy_static! {
     static ref TICK: Mutex<u64> = Mutex::new(0);
@@ -111,6 +113,13 @@ fn handle_software_interrupt() {
     let mut sip = Sip::from_read();
     sip.clear_pending(1);
     sip.write();
+
+    let proc = get_proc();
+    unsafe {
+        if !proc.is_null() && (*proc).state == ProcState::RUNNING {
+            yield_proc();
+        }
+    }
 }
 
 fn interrupt_handler() {
@@ -120,9 +129,12 @@ fn interrupt_handler() {
     if scause.is_interrupt() {
         match code {
             x if x == Interrupt::SupervisorExternal as u64 => handle_external_interrupt(),
+            // software interrupt from machine-mode timer interrupt
             x if x == Interrupt::SupervisorSoftware as u64 => handle_software_interrupt(),
             _ => panic!("Illegal interrupt code"),
         }
+    } else {
+        panic!("exception");
     }
 }
 

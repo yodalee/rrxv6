@@ -33,7 +33,7 @@ use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::print::println;
 use crate::proc::init_proc;
-use crate::scheduler::{init_scheduler, get_scheduler, yield_proc};
+use crate::scheduler::{init_scheduler, get_scheduler};
 use crate::trap::init_harttrap;
 
 use linked_list_allocator::LockedHeap;
@@ -68,14 +68,20 @@ pub fn main() -> ! {
 fn print_a() {
     loop {
         println("A");
-        yield_proc();
+        let mut counter = 0;
+        for i in 0..100000 {
+            counter += 1;
+        }
     }
 }
 
 fn print_b() {
     loop {
         println("B");
-        yield_proc();
+        let mut counter = 0;
+        for i in 0..100000 {
+            counter += 1;
+        }
     }
 }
 
