@@ -10,7 +10,6 @@ extern crate alloc;
 extern crate rv64;
 
 mod console;
-mod context;
 mod cpu;
 mod kalloc;
 mod kvm;
@@ -20,6 +19,7 @@ mod param;
 mod plic;
 mod print;
 mod proc;
+mod proc_util;
 mod riscv;
 mod scheduler;
 mod start;

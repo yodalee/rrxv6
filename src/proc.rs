@@ -1,8 +1,8 @@
 //! kernel process table
 
-use crate::context::Context;
 use crate::memorylayout::kstack;
 use crate::param::{NPROC, LEN_PROCNAME};
+use crate::proc_util::Context;
 use crate::scheduler::get_scheduler;
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicUsize, Ordering};

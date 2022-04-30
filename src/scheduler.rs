@@ -1,7 +1,7 @@
-use crate::context::Context;
 use crate::cpu::get_cpu;
 use crate::list::List;
 use crate::proc::{Proc, ProcState, get_pid};
+use crate::proc_util::Context;
 use crate::riscv::PAGESIZE;
 use crate::trap::intr_on;
 use alloc::boxed::Box;

@@ -3,9 +3,9 @@
 
 use rv64::register::tp;
 use spin::Mutex;
-use crate::context::Context;
 use crate::param::NCPU;
 use crate::proc::Proc;
+use crate::proc_util::Context;
 use crate::trap::{push_off, pop_off};
 use alloc::boxed::Box;
 use core::ptr;
