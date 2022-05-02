@@ -1,8 +1,7 @@
 use crate::cpu::get_cpu;
 use crate::list::List;
-use crate::proc::{Proc, ProcState, get_pid};
+use crate::proc::{Proc, ProcState};
 use crate::proc_util::Context;
-use crate::riscv::PAGESIZE;
 use crate::trap::intr_on;
 use alloc::boxed::Box;
 use spin::Mutex;
@@ -26,25 +25,6 @@ impl Scheduler {
         Self {
             used: Mutex::new(List::new()),
             unused: List::new(),
-        }
-    }
-
-    pub fn spawn(&mut self, f: u64) {
-        match self.unused.pop() {
-            Some(mut proc) => {
-                // initialize process
-                proc.pid = get_pid();
-                proc.state = ProcState::RUNNABLE;
-                proc.context.reset();
-                proc.context.ra = f;
-                proc.context.sp = proc.kstack + PAGESIZE;
-
-                let mut used_list = self.used.lock();
-                used_list.push(proc);
-            },
-            None => {
-                panic!("No unused process left");
-            }
         }
     }
 

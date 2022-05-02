@@ -32,7 +32,7 @@ use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::print::println;
-use crate::proc::init_proc;
+use crate::proc::{init_proc, init_userproc};
 use crate::scheduler::{init_scheduler, get_scheduler};
 use crate::trap::init_harttrap;
 
@@ -55,34 +55,14 @@ pub fn main() -> ! {
         init_plic();      // initialize PLIC interrupt controller
         init_hartplic();  // ask PLIC for device interrupt
 
+        init_userproc();  // create first user process
+
         println("OS started");
     }
 
     let scheduler = get_scheduler();
-    scheduler.spawn(print_a as u64);
-    scheduler.spawn(print_b as u64);
     // start scheduling, this function shall not return
     scheduler.schedule();
-}
-
-fn print_a() {
-    loop {
-        println("A");
-        let mut counter = 0;
-        for i in 0..100000 {
-            counter += 1;
-        }
-    }
-}
-
-fn print_b() {
-    loop {
-        println("B");
-        let mut counter = 0;
-        for i in 0..100000 {
-            counter += 1;
-        }
-    }
 }
 
 #[global_allocator]
