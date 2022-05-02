@@ -25,7 +25,7 @@ pub struct Proc {
     pub context: Context,
     pub kstack: u64,
     pub pid: usize,
-    pub name: [char;LEN_PROCNAME],
+    pub name: [u8;LEN_PROCNAME],
 }
 
 impl Proc {
@@ -35,7 +35,21 @@ impl Proc {
             context: Context::new(),
             kstack,
             pid: 0,
-            name: ['\0';LEN_PROCNAME],
+            name: [0;LEN_PROCNAME],
+        }
+    }
+
+    /// Reset process to initial state
+    pub fn reset(&mut self) {
+        self.state = ProcState::RUNNABLE;
+        self.context.reset();
+        self.pid = 0;
+        self.name = [0;LEN_PROCNAME];
+    }
+
+    pub fn set_name(&mut self, s: &str) {
+        for (dest,src) in self.name.iter_mut().zip(s.bytes()) {
+            *dest = src;
         }
     }
 }
