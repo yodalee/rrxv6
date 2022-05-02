@@ -6,6 +6,8 @@ use crate::proc_util::{Context, TrapFrame};
 use crate::scheduler::get_scheduler;
 use crate::kalloc::kalloc;
 use crate::riscv::PAGESIZE;
+use crate::vm::page_table::PageTable;
+use crate::kvm::init_user_pagetable;
 
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -29,8 +31,10 @@ pub struct Proc {
     pub context: Context,
     pub kstack: u64,
     pub pid: usize,
+    pub memory_size: u64,
     pub name: [u8;LEN_PROCNAME],
     pub trapframe: NonNull<TrapFrame>,
+    pub pagetable: NonNull<PageTable>,
 }
 
 impl Proc {
@@ -40,8 +44,10 @@ impl Proc {
             context: Context::new(),
             kstack,
             pid: 0,
+            memory_size: 0,
             name: [0;LEN_PROCNAME],
             trapframe: NonNull::dangling(),
+            pagetable: NonNull::dangling(),
         }
     }
 
@@ -74,11 +80,24 @@ pub fn init_proc() {
     }
 }
 
+pub fn forkret() {
+}
+
 /// setup user process
 pub fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
     // allocate memory for trapframe
     proc.trapframe = NonNull::new(kalloc() as *mut _)
-        .ok_or("kalloc failed in alloc trapframe")?;
+        .ok_or("kalloc failed in alloc user trapframe")?;
+
+    // allocate memory for pagetable
+    proc.pagetable = init_user_pagetable(&proc)
+        .ok_or("kalloc failed in alloc user pagetable")?;
+
+    // setup new context to start execution at forkret.
+    // forkret will return to user space
+    proc.context.reset();
+    proc.context.ra = forkret as u64;
+    proc.context.sp = proc.kstack + PAGESIZE;
 
     Ok(())
 }
@@ -100,6 +119,9 @@ pub fn init_userproc() {
         Ok(()) => {
             // initialize user pid
             proc.pid = get_pid();
+
+            // initialize memory map
+            proc.memory_size = PAGESIZE;
 
             // Note that first user process will have its pid 0
             // we don't save additional pointer to this process
