@@ -70,7 +70,8 @@ pub unsafe fn get_root_page() -> &'static mut PageTable {
 /// Add a mapping to the kernel page table.
 /// only used when booting before enable paging.
 fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
-    match map_pages(va, pa, size, perm) {
+    let page_table = unsafe { get_root_page() };
+    match map_pages(page_table, va, pa, size, perm) {
         Ok(_) => {},
         Err(e) => panic!("mappages error: {}", e),
     }
@@ -80,8 +81,7 @@ fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
 /// physical addresses starting at pa. va and size might not
 /// be page-aligned.
 /// Return Errs if it cannot allocate the needed page-table.
-fn map_pages(va: VirtAddr, mut pa: PhysAddr, size: u64, perm: PteFlag) -> Result<(), &'static str> {
-    let page_table = unsafe { get_root_page() };
+fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u64, perm: PteFlag) -> Result<(), &'static str> {
     let va_start = va.align_down();
     let va_end = VirtAddr::new_truncate(va.as_u64() + size - 1).align_down();
     let mut page_addr = va_start;
