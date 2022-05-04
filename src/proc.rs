@@ -8,9 +8,10 @@ use crate::kalloc::kalloc;
 use crate::riscv::PAGESIZE;
 use crate::vm::page_table::PageTable;
 use crate::kvm::{init_user_pagetable, init_uvm};
+use crate::trap::usertrapret;
 
 use alloc::boxed::Box;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use core::ptr::NonNull;
 
 /// Process state
@@ -81,6 +82,16 @@ pub fn init_proc() {
 }
 
 pub fn forkret() {
+    static FIRST_USER_PROCESS: AtomicBool = AtomicBool::new(true);
+
+    let is_first = FIRST_USER_PROCESS.swap(false, Ordering::Relaxed);
+    if is_first {
+    }
+
+    unsafe {
+        usertrapret();
+    }
+
 }
 
 /// setup user process

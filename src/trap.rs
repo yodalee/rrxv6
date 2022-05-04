@@ -1,19 +1,22 @@
-use rv64::csr::stvec::Stvec;
-use rv64::csr::sstatus::{Sstatus, Mode};
+use rv64::csr::satp::{Satp, SatpMode};
 use rv64::csr::scause::Scause;
 use rv64::csr::sepc::Sepc;
 use rv64::csr::sip::Sip;
+use rv64::csr::sstatus::{Sstatus, Mode};
+use rv64::csr::stvec::Stvec;
+use rv64::register::tp;
 
 use lazy_static::lazy_static;
 use spin::Mutex;
+use alloc::boxed::Box;
 
 use crate::cpu::{get_cpu, get_cpuid, get_proc};
-use crate::riscv::Interrupt;
-use crate::uart::UART;
+use crate::memorylayout::{UART0_IRQ, TRAMPOLINE, TRAPFRAME};
 use crate::plic::{Plic, PlicContext};
-use crate::memorylayout::UART0_IRQ;
+use crate::proc::{Proc, ProcState};
+use crate::riscv::{Interrupt, PAGESIZE};
 use crate::scheduler::yield_proc;
-use crate::proc::ProcState;
+use crate::uart::UART;
 
 lazy_static! {
     static ref TICK: Mutex<u64> = Mutex::new(0);
@@ -21,6 +24,9 @@ lazy_static! {
 
 extern "C" {
     fn kernelvec();
+    fn uservec();
+    fn userret();
+    fn trampoline();
 }
 
 // setup to take exceptions and traps in supervisor mode
@@ -154,4 +160,59 @@ pub fn kerneltrap() {
 
     sepc.write();
     sstatus.write();
+}
+
+pub unsafe fn usertrapret() {
+    let proc = get_proc() as *mut Box<Proc>;
+
+    // We're about to switch the destination of traps from kerneltrap() to usertrap()
+    // turn off interrupts until we're back in user space, where usertrap() is correct.
+    intr_off();
+
+    // send syscalls, interrupts, and exceptions to trampoline.S
+    let mut stvec = Stvec::from_bits(0);
+    stvec.set_addr(TRAMPOLINE + (uservec as u64 - trampoline as u64));
+    stvec.write();
+
+    // set up trapframe values that uservec will need when
+    // the process next re-enters the kernel.
+    let trapframe = (*proc).trapframe.as_mut();
+    let satp = Satp::from_read();
+    trapframe.kernel_satp = satp.bits();             // kernel page table
+    trapframe.kernel_sp = (*proc).kstack + PAGESIZE; // process's kernel stack
+    trapframe.kernel_trap = usertrap as u64;
+    trapframe.kernel_hartid = tp::read();            // hartid for cpuid()
+
+    // set up the registers that trampoline.S's sret will use
+    // to get to user space.
+
+    // set S Previous Privilege mode to User.
+    let mut sstatus = Sstatus::from_read();
+    sstatus.set_spp(Mode::UserMode); // clear SPP to 0 for user mode
+    sstatus.set_spie(true);
+    sstatus.write();
+
+    // set S Exception Program Counter to the saved user pc.
+    Sepc::from_bits(trapframe.epc).write();
+
+    // tell trampoline.S the user page table to switch to.
+    let mut satp = Satp::from_bits(0);
+    let pagetable = (*proc).pagetable.as_mut();
+    satp.set_mode(SatpMode::ModeSv39);
+    satp.set_addr(pagetable as *const _ as u64);
+    let satp = satp.bits();
+
+    // jump to trampoline.S at the top of memory, which
+    // switches to the user page table, restores user registers,
+    // and switches to user mode with sret.
+    let fp = (TRAMPOLINE + (userret as u64 - trampoline as u64)) as *const ();
+    let code: fn(u64, u64) = core::mem::transmute(fp);
+    code(TRAPFRAME, satp)
+}
+
+/// handle an interrupt, exception, or system call from user space.
+/// called from trampoline.S, must not mangle its name
+#[no_mangle]
+pub fn usertrap() {
+    loop {}
 }
