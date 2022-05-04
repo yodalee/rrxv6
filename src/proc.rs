@@ -7,7 +7,7 @@ use crate::scheduler::get_scheduler;
 use crate::kalloc::kalloc;
 use crate::riscv::PAGESIZE;
 use crate::vm::page_table::PageTable;
-use crate::kvm::init_user_pagetable;
+use crate::kvm::{init_user_pagetable, init_uvm};
 
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -102,6 +102,10 @@ pub fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
     Ok(())
 }
 
+/// The first user program that run infinite loop
+/// od -t xC initcode
+static INITCODE: [u8;4] = [0x6f, 0x00, 0x00, 0x00];
+
 /// initialize first user process
 pub fn init_userproc() {
     let scheduler = get_scheduler();
@@ -121,6 +125,10 @@ pub fn init_userproc() {
             proc.pid = get_pid();
 
             // initialize memory map
+            unsafe {
+                let pagetable = proc.pagetable.as_mut();
+                init_uvm(pagetable, &INITCODE);
+            }
             proc.memory_size = PAGESIZE;
 
             // Note that first user process will have its pid 0

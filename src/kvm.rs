@@ -10,7 +10,7 @@ use crate::kalloc::kalloc;
 use crate::param::NPROC;
 use crate::proc::Proc;
 
-use core::ptr::NonNull;
+use core::ptr::{NonNull, copy, write_bytes};
 
 static mut KERNELPAGE: Option<&mut PageTable> = None;
 
@@ -164,5 +164,20 @@ pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
         Some(page_table_ptr)
     } else {
         None
+    }
+}
+
+pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {
+    let size = code.len();
+    let pagesize = PAGESIZE as usize;
+    if size > pagesize {
+        panic!("init_uvm: more than a page");
+    }
+    let ptr = kalloc();
+    unsafe {
+        write_bytes(ptr, 0, pagesize);
+        map_pages(page_table, VirtAddr::new(0), PhysAddr::new(ptr as u64), PAGESIZE,
+            PteFlag::PTE_READ | PteFlag::PTE_WRITE | PteFlag::PTE_EXEC | PteFlag::PTE_USER);
+        copy::<u8>(code.as_ptr() as *const u8, ptr, size);
     }
 }
