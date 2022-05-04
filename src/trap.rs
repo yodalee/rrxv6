@@ -25,9 +25,7 @@ extern "C" {
 
 // setup to take exceptions and traps in supervisor mode
 pub fn init_harttrap() {
-    let mut stvec = Stvec::from_bits(0);
-    stvec.set_addr(kernelvec as u64);
-    stvec.write();
+    Stvec::from_bits(kernelvec as u64).write();
 }
 
 /// enable device interrupt
