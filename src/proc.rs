@@ -1,5 +1,7 @@
 //! kernel process table
 
+include!(concat!(env!("OUT_DIR"), "/initcode.rs"));
+
 use crate::memorylayout::kstack;
 use crate::param::{NPROC, LEN_PROCNAME};
 use crate::proc_util::{Context, TrapFrame};
@@ -112,10 +114,6 @@ pub fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
 
     Ok(())
 }
-
-/// The first user program that run infinite loop
-/// od -t xC initcode
-static INITCODE: [u8;4] = [0x6f, 0x00, 0x00, 0x00];
 
 /// initialize first user process
 pub fn init_userproc() {

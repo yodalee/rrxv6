@@ -1,0 +1,7 @@
+/*.o
+/*.asm
+/*.d
+/*.out
+
+# executable
+/initcode
