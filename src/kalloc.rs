@@ -1,5 +1,5 @@
 
-use alloc::alloc::alloc;
+use alloc::alloc::{alloc, dealloc};
 use alloc::alloc::Layout;
 use crate::memorylayout;
 use crate::riscv::PAGESIZE;
@@ -34,5 +34,12 @@ pub fn kalloc() -> *mut u8 {
         let ptr = alloc(layout);
         write_bytes(ptr, 0x0, PAGESIZE as usize);
         return ptr;
+    }
+}
+
+pub fn kfree(ptr: *mut u8) {
+    unsafe {
+        let layout = Layout::from_size_align(PAGESIZE as usize, 4096).unwrap();
+        dealloc(ptr, layout);
     }
 }

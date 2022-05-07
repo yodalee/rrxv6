@@ -6,7 +6,7 @@ use crate::memorylayout::kstack;
 use crate::param::{NPROC, LEN_PROCNAME};
 use crate::proc_util::{Context, TrapFrame};
 use crate::scheduler::get_scheduler;
-use crate::kalloc::kalloc;
+use crate::kalloc::{kalloc, kfree};
 use crate::riscv::PAGESIZE;
 use crate::vm::page_table::PageTable;
 use crate::kvm::{init_user_pagetable, init_uvm};
@@ -55,13 +55,19 @@ impl Proc {
     }
 
     /// Reset process to initial state
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, free_memory: bool) {
         self.state = ProcState::RUNNABLE;
         self.context.reset();
         self.pid = 0;
+        self.memory_size = 0;
         self.name = [0;LEN_PROCNAME];
-        unsafe {
-            self.trapframe.as_mut().reset();
+        if free_memory {
+            kfree(self.trapframe.as_ptr() as *mut _);
+            self.trapframe = NonNull::dangling();
+        } else {
+            unsafe {
+                self.trapframe.as_mut().reset();
+            }
         }
     }
 
@@ -76,7 +82,7 @@ impl Proc {
 pub fn init_proc() {
     let scheduler = get_scheduler();
     for i in 0..NPROC {
-        let mut proc = Box::new(Proc::new(
+        let proc = Box::new(Proc::new(
             kstack(i as u64)
         ));
         scheduler.unused.push(proc)
@@ -125,9 +131,9 @@ pub fn init_userproc() {
     };
 
     match alloc_process(&mut proc) {
-        Err(s) => {
-            // cleanup process
-            panic!("init_userproc: {}", s);
+        Err(_s) => {
+            proc.reset(true);
+            panic!("init_userproc: alloc_process");
         }
         Ok(()) => {
             // initialize user pid
