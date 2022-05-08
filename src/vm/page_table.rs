@@ -78,9 +78,15 @@ impl PageTableEntry {
         (self.entry >> 10) << 12
     }
 
+    #[inline]
     pub fn set_addr(&mut self, addr: u64, perm: PteFlag) {
         // TODO: check aligned here
         self.entry = addr | perm.bits();
+    }
+
+    #[inline]
+    pub fn flag(&self) -> PteFlag {
+        PteFlag::from_bits_truncate(self.entry & 0x3FF)
     }
 }
 

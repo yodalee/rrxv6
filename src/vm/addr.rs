@@ -44,6 +44,11 @@ impl VirtAddr {
     }
 
     #[inline]
+    pub fn is_align(self) -> bool {
+        self.0 & (4096 - 1) == 0
+    }
+
+    #[inline]
     pub fn align_down(self) -> Self {
         Self(
             align_down(self.0, 4096)
