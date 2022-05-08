@@ -9,7 +9,7 @@ use crate::scheduler::get_scheduler;
 use crate::kalloc::{kalloc, kfree};
 use crate::riscv::PAGESIZE;
 use crate::vm::page_table::PageTable;
-use crate::kvm::{init_user_pagetable, init_uvm};
+use crate::kvm::{init_user_pagetable, init_uvm, clear_user_pagetable};
 use crate::trap::usertrapret;
 
 use alloc::boxed::Box;
@@ -56,19 +56,20 @@ impl Proc {
 
     /// Reset process to initial state
     pub fn reset(&mut self, free_memory: bool) {
-        self.state = ProcState::RUNNABLE;
-        self.context.reset();
-        self.pid = 0;
-        self.memory_size = 0;
-        self.name = [0;LEN_PROCNAME];
         if free_memory {
             kfree(self.trapframe.as_ptr() as *mut _);
             self.trapframe = NonNull::dangling();
+            clear_user_pagetable(self);
         } else {
             unsafe {
                 self.trapframe.as_mut().reset();
             }
         }
+        self.state = ProcState::RUNNABLE;
+        self.context.reset();
+        self.pid = 0;
+        self.memory_size = 0;
+        self.name = [0;LEN_PROCNAME];
     }
 
     pub fn set_name(&mut self, s: &str) {

@@ -6,7 +6,7 @@ use crate::vm::addr::{VirtAddr, PhysAddr};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
 use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
-use crate::kalloc::kalloc;
+use crate::kalloc::{kalloc, kfree};
 use crate::param::NPROC;
 use crate::proc::Proc;
 
@@ -74,10 +74,8 @@ pub unsafe fn get_root_page() -> &'static mut PageTable {
 /// only used when booting before enable paging.
 fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
     let page_table = unsafe { get_root_page() };
-    match map_pages(page_table, va, pa, size, perm) {
-        Ok(_) => {},
-        Err(e) => panic!("mappages error: {}", e),
-    }
+    map_pages(page_table, va, pa, size, perm)
+        .expect("map_pages_error");
 }
 
 /// Create PTEs for virtual addresses starting at va that refer to
@@ -176,8 +174,69 @@ pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {
     let ptr = kalloc();
     unsafe {
         write_bytes(ptr, 0, pagesize);
-        map_pages(page_table, VirtAddr::new(0), PhysAddr::new(ptr as u64), PAGESIZE,
-            PteFlag::PTE_READ | PteFlag::PTE_WRITE | PteFlag::PTE_EXEC | PteFlag::PTE_USER);
+        let va = VirtAddr::new(0);
+        let pa = PhysAddr::new(ptr as u64);
+        let perm = PteFlag::PTE_READ | PteFlag::PTE_WRITE | PteFlag::PTE_EXEC | PteFlag::PTE_USER;
+        map_pages(page_table, va, pa, PAGESIZE, perm)
+            .expect("init_uvm");
         copy::<u8>(code.as_ptr() as *const u8, ptr, size);
+    }
+}
+
+pub fn clear_user_pagetable(proc: &mut Proc) {
+    unsafe {
+        let page_table = proc.pagetable.as_mut();
+        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false)
+            .expect("unmap_pages error");
+        unmap_pages(page_table, VirtAddr::new(TRAPFRAME), 1, false)
+            .expect("unmap_pages error");
+    }
+}
+
+/// Remove npages of mappings starting fom va. va must be page-aligned.
+/// panic! if mappings is not exist.
+/// Optional: free the physical memory.
+fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: bool) -> Result<(), &'static str> {
+    if !va.is_align() {
+        return Err("unmap_pages: not aligned");
+    }
+
+    let mut addr = va;
+    while addr < va + npages * PAGESIZE {
+        unmap_page(page_table, addr, PageTableLevel::Two, do_free)?;
+        addr += PAGESIZE;
+    }
+
+    Ok(())
+}
+
+fn unmap_page(page_table: &mut PageTable, va: VirtAddr, level: PageTableLevel, do_free: bool) -> Result<(), &'static str> {
+    if va >= VirtAddr::new(MAXVA) {
+        return Err("unmap_page: virtual address over MAX address")
+    }
+    let index = va.get_index(level);
+    let pte = &mut page_table[index];
+    match level.next_level() {
+        None => {
+            // Recursive end
+            if pte.is_unused() {
+                Err("unmap_page: not mapped")
+            } else if pte.flag() == PteFlag::PTE_VALID {
+                Err("unmap_page: not leaf")
+            } else {
+                let addr = pte.addr();
+                kfree(addr as *mut _);
+                pte.set_unused();
+                Ok(())
+            }
+        },
+        Some(next_level) => {
+            // Allocate space for page table and call map_page with next level
+            if pte.is_unused() {
+                return Err("unmap_page: walk");
+            }
+            let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
+            unmap_page(next_table, va, next_level, do_free)
+        }
     }
 }
