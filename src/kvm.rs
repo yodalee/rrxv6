@@ -2,7 +2,7 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
 use crate::vm::page_table::{PageTable, PageTableLevel};
-use crate::vm::addr::{VirtAddr, PhysAddr};
+use crate::vm::addr::{VirtAddr, PhysAddr, align_up};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
 use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
@@ -186,9 +186,9 @@ pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {
 pub fn clear_user_pagetable(proc: &mut Proc) {
     unsafe {
         let page_table = proc.pagetable.as_mut();
-        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false)
-            .expect("unmap_pages error");
-        unmap_pages(page_table, VirtAddr::new(TRAPFRAME), 1, false)
+        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false).and(
+        unmap_pages(page_table, VirtAddr::new(TRAPFRAME), 1, false)).and(
+        unmap_free(page_table, proc.memory_size))
             .expect("unmap_pages error");
     }
 }
@@ -239,4 +239,32 @@ fn unmap_page(page_table: &mut PageTable, va: VirtAddr, level: PageTableLevel, d
             unmap_page(next_table, va, next_level, do_free)
         }
     }
+}
+
+fn free_pagetable(page_table: &mut PageTable, level: PageTableLevel) -> Result<(), &'static str> {
+    for i in 0..512 {
+        let pte = &mut page_table[i];
+        let flag = pte.flag();
+        if flag.contains(PteFlag::PTE_VALID) {
+            if !flag.intersects(PteFlag::PTE_READ | PteFlag::PTE_WRITE | PteFlag::PTE_EXEC) {
+                let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
+                free_pagetable(next_table, level.next_level().unwrap())?;
+                pte.set_unused();
+            } else {
+                return Err("free_pagetable: leaf");
+            }
+        }
+    }
+    kfree(page_table as *mut PageTable as *mut _);
+    Ok(())
+}
+
+fn unmap_free(pagetable: &mut PageTable, size: u64) -> Result<(), &'static str> {
+    if size > 0 {
+        let va = VirtAddr::new(0);
+        let npages = align_up(size, PAGESIZE) / PAGESIZE;
+        unmap_pages(pagetable, va, npages, true)?;
+    }
+    free_pagetable(pagetable, PageTableLevel::Two)?;
+    Ok(())
 }
