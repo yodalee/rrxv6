@@ -14,9 +14,11 @@ use crate::cpu::{get_cpu, get_cpuid, get_proc};
 use crate::memorylayout::{UART0_IRQ, TRAMPOLINE, TRAPFRAME};
 use crate::plic::{Plic, PlicContext};
 use crate::proc::{Proc, ProcState};
-use crate::riscv::{Interrupt, PAGESIZE};
+use crate::riscv::{Interrupt, Exception, PAGESIZE};
 use crate::scheduler::yield_proc;
+use crate::syscall::syscall;
 use crate::uart::UART;
+use crate::println;
 
 lazy_static! {
     static ref TICK: Mutex<u64> = Mutex::new(0);
@@ -214,5 +216,50 @@ pub unsafe fn usertrapret() {
 /// called from trampoline.S, must not mangle its name
 #[no_mangle]
 pub fn usertrap() {
-    loop {}
+    let sstatus = Sstatus::from_read();
+    if sstatus.get_spp() != Mode::UserMode {
+        panic!("usertrap: not from user mode");
+    }
+
+    // send interrupts and exceptions to kerneltrap(),
+    // since we're now in the kernel.
+    Stvec::from_bits(kernelvec as u64).write();
+
+    let proc: *mut Box<Proc> = get_proc();
+    let trapframe = unsafe { (*proc).trapframe.as_mut() };
+
+    // save user program counter.
+    trapframe.epc = Sepc::from_read().bits();
+
+    let scause = Scause::from_read();
+    let code = scause.get_code();
+    if scause.is_interrupt() {
+        // TODO more informative println
+        println("usertrap: unexpected scause");
+        unimplemented!("uservec: unexpected interrupt");
+    } else {
+        match code {
+            x if x == Exception::EnvironmentCallUMode as u64 =>  {
+                // system call
+                // TODO: check process is killed
+
+                // sepc points to the ecall instruction,
+                // but we want to return to the next instruction.
+                trapframe.epc += 4;
+
+                // an interrupt will change sstatus &c registers,
+                // so don't enable until done with those registers.
+                intr_on();
+
+                syscall();
+            }
+            _ => {
+                unimplemented!("uservec: unexpected exception");
+            }
+        }
+    }
+
+    unsafe {
+        usertrapret();
+    }
 }

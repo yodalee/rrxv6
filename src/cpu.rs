@@ -55,7 +55,7 @@ pub fn get_cpu() -> &'static mut Cpu {
     }
 }
 
-pub fn get_proc() -> *const Box<Proc> {
+pub fn get_proc() -> *mut Box<Proc> {
     push_off();
     let cpu = get_cpu();
     let proc = cpu.proc;

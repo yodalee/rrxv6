@@ -24,6 +24,7 @@ mod proc_util;
 mod riscv;
 mod scheduler;
 mod start;
+mod syscall;
 mod trap;
 mod uart;
 mod vm;
