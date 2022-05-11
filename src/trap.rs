@@ -119,16 +119,10 @@ fn handle_software_interrupt() {
     let mut sip = Sip::from_read();
     sip.clear_pending(1);
     sip.write();
-
-    let proc = get_proc();
-    unsafe {
-        if !proc.is_null() && (*proc).state == ProcState::RUNNING {
-            yield_proc();
-        }
-    }
 }
 
-fn interrupt_handler() {
+/// handle interrupt and return the interrupt code
+fn interrupt_handler() -> Option<u64> {
     let scause = Scause::from_read();
     let code = scause.get_code();
 
@@ -137,10 +131,11 @@ fn interrupt_handler() {
             x if x == Interrupt::SupervisorExternal as u64 => handle_external_interrupt(),
             // software interrupt from machine-mode timer interrupt
             x if x == Interrupt::SupervisorSoftware as u64 => handle_software_interrupt(),
-            _ => panic!("Illegal interrupt code"),
+            _ => return None,
         }
+        Some(code)
     } else {
-        panic!("exception");
+        None
     }
 }
 
@@ -158,7 +153,21 @@ pub fn kerneltrap() {
         panic!("kerneltrap: interrupts enabled");
     }
 
-    interrupt_handler();
+    match interrupt_handler() {
+        Some(x) if x == Interrupt::SupervisorSoftware as u64 => {
+            let proc = get_proc();
+            unsafe {
+                if !proc.is_null() && (*proc).state == ProcState::RUNNING {
+                    yield_proc();
+                }
+            }
+        },
+        None => {
+            // TODO print scause, sepc, stval
+            panic!("kerneltrap");
+        },
+        _ => (),
+    }
 
     sepc.write();
     sstatus.write();
@@ -234,9 +243,16 @@ pub fn usertrap() {
     let scause = Scause::from_read();
     let code = scause.get_code();
     if scause.is_interrupt() {
-        // TODO more informative println
-        println("usertrap: unexpected scause");
-        unimplemented!("uservec: unexpected interrupt");
+        match interrupt_handler() {
+            Some(x) if x == Interrupt::SupervisorSoftware as u64 => {
+                yield_proc();
+            },
+            None => {
+                // TODO print scause sepc stval, kill process
+                panic!("usertrap")
+            }
+            _ => (),
+        }
     } else {
         match code {
             x if x == Exception::EnvironmentCallUMode as u64 =>  {
@@ -254,7 +270,7 @@ pub fn usertrap() {
                 syscall();
             }
             _ => {
-                unimplemented!("uservec: unexpected exception");
+                panic!("usertrap: unexpected exception");
             }
         }
     }
