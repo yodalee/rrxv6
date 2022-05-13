@@ -4,6 +4,7 @@ use rv64::csr::sepc::Sepc;
 use rv64::csr::sip::Sip;
 use rv64::csr::sstatus::{Sstatus, Mode};
 use rv64::csr::stvec::Stvec;
+use rv64::csr::stval::Stval;
 use rv64::register::tp;
 
 use lazy_static::lazy_static;
@@ -163,7 +164,10 @@ pub fn kerneltrap() {
             }
         },
         None => {
-            // TODO print scause, sepc, stval
+            let scause = Scause::from_read().bits();
+            let sepc = Sepc::from_read().bits();
+            let stval = Stval::from_read().bits();
+            println!("scause {:x} sepc={:x} stval={:x}", scause, sepc, stval);
             panic!("kerneltrap");
         },
         _ => (),
@@ -248,7 +252,12 @@ pub fn usertrap() {
                 yield_proc();
             },
             None => {
-                // TODO print scause sepc stval, kill process
+                // TODO just kill process, don't panic
+                let pid = unsafe { (*proc).pid };
+                let sepc = Sepc::from_read().bits();
+                let stval = Stval::from_read().bits();
+                println!("usertrap(): unexpected scause {:x}", scause.bits());
+                println!("    pid = {:x} sepc={:x} stval={:x}", pid, sepc, stval);
                 panic!("usertrap")
             }
             _ => (),
