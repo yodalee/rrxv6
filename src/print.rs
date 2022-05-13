@@ -2,6 +2,17 @@ use core::panic::PanicInfo;
 use crate::trap::{push_off, pop_off};
 use crate::uart::UART;
 
+#[macro_export]
+macro_rules! println {
+    ($fmt:expr) => {
+        println($fmt);
+    };
+    ($fmt:expr,$($args:tt)*) => {{
+        let s = format!($fmt, $($args)*);
+        println(&s);
+    }};
+}
+
 pub fn println(s: &str) {
     push_off();
     {

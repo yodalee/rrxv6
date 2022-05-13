@@ -17,6 +17,7 @@ mod list;
 mod memorylayout;
 mod param;
 mod plic;
+#[macro_use]
 mod print;
 mod proc;
 mod proc_util;
@@ -45,7 +46,7 @@ pub fn main() -> ! {
         init_scheduler(); // initialize scheduler for schedule
         init_cpu();       // initialize cpu struct
 
-        println("rrxv6 start");
+        println!("rrxv6 start");
 
         init_heap();      // initialize physical memory allocator
         init_kvm();       // initialize kernel page table
@@ -57,7 +58,7 @@ pub fn main() -> ! {
 
         init_userproc();  // create first user process
 
-        println("OS started");
+        println!("OS started");
     }
 
     let scheduler = get_scheduler();
