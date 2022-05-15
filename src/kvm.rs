@@ -2,7 +2,7 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
 use crate::vm::page_table::{PageTable, PageTableLevel};
-use crate::vm::addr::{VirtAddr, PhysAddr, align_up};
+use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
 use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
@@ -11,6 +11,8 @@ use crate::param::NPROC;
 use crate::proc::Proc;
 
 use core::ptr::{NonNull, copy, write_bytes};
+use core::slice::from_raw_parts;
+use core::cmp;
 
 static mut KERNELPAGE: Option<&mut PageTable> = None;
 
@@ -267,4 +269,56 @@ fn unmap_free(pagetable: &mut PageTable, size: u64) -> Result<(), &'static str> 
     }
     free_pagetable(pagetable, PageTableLevel::Two)?;
     Ok(())
+}
+
+/// Look up a virtual address, return Option physical address,
+/// Can only be used to look up user pages.
+fn map_addr(page_table: &PageTable, va: VirtAddr) -> Option<PhysAddr> {
+    if va >= VirtAddr::new(MAXVA) {
+        return None
+    }
+    map_addr_recur(page_table, va, PageTableLevel::Two)
+}
+
+fn map_addr_recur(page_table: &PageTable, va: VirtAddr, level: PageTableLevel) -> Option<PhysAddr> {
+    let index = va.get_index(level);
+    let pte = &page_table[index];
+    match level.next_level() {
+        None => {
+            let flag = pte.flag();
+            if !flag.contains(PteFlag::PTE_VALID | PteFlag::PTE_USER) {
+                return None
+            }
+            Some(PhysAddr::new(pte.addr()))
+        },
+        Some(next_level) => {
+            let flag = pte.flag();
+            if !flag.contains(PteFlag::PTE_VALID) {
+                return None;
+            }
+            let next_table = unsafe { &*(pte.addr() as *const PageTable) };
+            map_addr_recur(next_table, va, next_level)
+        }
+    }
+}
+
+pub fn copy_in_str(page_table: &mut PageTable, addr: u64, buf: &mut [u8]) -> Option<u64> {
+    let max_len = buf.len();
+    let base = align_down(addr, PAGESIZE);
+    let offset = addr - base;
+    let va = VirtAddr::new(base);
+    let pa = map_addr(page_table, va)?;
+    let n = cmp::min(max_len, (PAGESIZE - offset) as usize);
+
+    let addr = (pa + offset).as_u64() as *const _;
+    unsafe {
+        let slice: &[u8] = from_raw_parts::<u8>(addr, n);
+        let len = slice
+            .iter()
+            .take_while(|c| **c != 0)
+            .zip(buf.iter_mut())
+            .map(|(a, b)| *b = *a)
+            .count();
+        Some(len as u64)
+    }
 }

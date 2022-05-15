@@ -1,5 +1,8 @@
 use crate::cpu::get_proc;
+use crate::kvm::copy_in_str;
 use crate::println;
+
+use alloc::string::String;
 use lazy_static::lazy_static;
 
 const SYSCALL_NUM : usize = 1;
@@ -28,11 +31,25 @@ fn get_arg(n: ArgIndex) -> u64 {
     }
 }
 
+/// Fetch the nul-terminated string at addr from the current process.
+/// Returns length of string, not including nul, or -1 for error.
+fn get_str(n: ArgIndex, buf: &mut [u8]) -> u64 {
+    let addr = get_arg(n);
+    let proc = get_proc();
+    let page_table = unsafe { (*proc).pagetable.as_mut() };
+    match copy_in_str(page_table, addr, buf) {
+        None => u64::MAX,
+        Some(len) => len
+    }
+}
+
 fn syscall_write() -> u64 {
-    let c = get_arg(ArgIndex::A1);
-    let c = char::from_u32(c as u32).unwrap();
-    println!("{}", c);
-    0
+    let len = get_arg(ArgIndex::A0);
+    let mut buf = vec![0; len as usize];
+    get_str(ArgIndex::A1, &mut buf);
+    println!("{}", String::from_utf8_lossy(&buf));
+    // FIXME the real write size
+    len
 }
 
 pub fn syscall() {
