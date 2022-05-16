@@ -19,6 +19,7 @@ cc = "1.0.25"
 
 [profile.dev]
 panic = "abort"
+opt-level = 1
 
 [profile.release]
 panic = "abort"
