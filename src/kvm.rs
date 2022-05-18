@@ -2,6 +2,7 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
 use crate::vm::page_table::{PageTable, PageTableLevel, PageTableEntry};
+use crate::vm::page_table_walker::{PageTableVisitor, PageTableWalkerMut};
 use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
@@ -78,42 +79,6 @@ fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
     let page_table = unsafe { get_root_page() };
     map_pages(page_table, va, pa, size, perm)
         .expect("map_pages_error");
-}
-
-struct MapWalkerMut<'a, Extra> {
-    page_table: &'a mut PageTable,
-    va: VirtAddr,
-    level: PageTableLevel,
-    extra: Extra,
-}
-
-trait PageTableVisitor {
-    type Output : core::ops::Try;
-    fn check_va(&mut self, va: VirtAddr) -> Self::Output;
-    fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
-    fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
-}
-
-impl<Extra: PageTableVisitor> MapWalkerMut<'_, Extra> {
-    fn visit_mut(&mut self) -> Extra::Output {
-        let _ = self.extra.check_va(self.va)?;
-        let index = self.va.get_index(self.level);
-        let pte = &mut self.page_table[index];
-
-        match self.level.next_level() {
-            None => {
-                self.extra.leaf(pte)
-            }
-            Some(next_level) => {
-                let _ = self.extra.nonleaf(pte)?;
-
-                let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
-                self.page_table = next_table;
-                self.level = next_level;
-                self.visit_mut()
-            }
-        }
-    }
 }
 
 struct PageMapper {
@@ -196,7 +161,7 @@ fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u
 
     loop {
         let mapper = PageMapper { pa, perm };
-        let mut walker = MapWalkerMut {
+        let mut walker = PageTableWalkerMut {
             page_table,
             va: page_addr,
             level: PageTableLevel::Two,
@@ -287,7 +252,7 @@ fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: b
     let mut addr = va;
     while addr < va + npages * PAGESIZE {
         let unmapper = PageUnmapper { do_free };
-        let mut walker = MapWalkerMut {
+        let mut walker = PageTableWalkerMut {
             page_table,
             va: addr,
             level: PageTableLevel::Two,
