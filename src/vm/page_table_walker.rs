@@ -11,14 +11,23 @@ pub struct PageTableWalkerMut<'a, Extra> {
 
 pub trait PageTableVisitor {
     type Output : core::ops::Try;
-    fn check_va(&mut self, va: VirtAddr) -> Self::Output;
+    fn is_valid_va(&self, va: VirtAddr) -> bool;
     fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
     fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
 }
 
-impl<Extra: PageTableVisitor> PageTableWalkerMut<'_, Extra> {
+impl<'a, Extra: PageTableVisitor> PageTableWalkerMut<'a, Extra> {
+    pub fn new(page_table: &'a mut PageTable, va: VirtAddr, level: PageTableLevel, extra: Extra) -> Option<Self> {
+        extra.is_valid_va(va).then(
+            move || Self {
+                page_table,
+                va,
+                level,
+                extra
+            }
+        )
+    }
     pub fn visit_mut(&mut self) -> Extra::Output {
-        let _ = self.extra.check_va(self.va)?;
         let index = self.va.get_index(self.level);
         let pte = &mut self.page_table[index];
 

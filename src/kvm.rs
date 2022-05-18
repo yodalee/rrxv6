@@ -88,11 +88,8 @@ struct PageMapper {
 
 impl PageTableVisitor for PageMapper {
     type Output = Result<(), &'static str>;
-    fn check_va(&mut self, va: VirtAddr) -> Self::Output {
-        if va >= VirtAddr::new(MAXVA) {
-            return Err("map_page: virtual address over MAX address")
-        }
-        Ok(())
+    fn is_valid_va(&self, va: VirtAddr) -> bool {
+        va < VirtAddr::new(MAXVA)
     }
 
     fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
@@ -123,11 +120,8 @@ struct PageUnmapper {
 
 impl PageTableVisitor for PageUnmapper {
     type Output = Result<(), &'static str>;
-    fn check_va(&mut self, va: VirtAddr) -> Self::Output {
-        if va >= VirtAddr::new(MAXVA) {
-            return Err("unmap_page: virtual address over MAX address")
-        }
-        Ok(())
+    fn is_valid_va(&self, va: VirtAddr) -> bool {
+        va < VirtAddr::new(MAXVA)
     }
 
     fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
@@ -161,12 +155,12 @@ fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u
 
     loop {
         let mapper = PageMapper { pa, perm };
-        let mut walker = PageTableWalkerMut {
+        let mut walker = PageTableWalkerMut::new(
             page_table,
-            va: page_addr,
-            level: PageTableLevel::Two,
-            extra: mapper
-        };
+            page_addr,
+            PageTableLevel::Two,
+            mapper
+        ).ok_or("map_page: virtual address over MAX address")?;
         walker.visit_mut()?;
 
         if page_addr == va_end {
@@ -252,12 +246,12 @@ fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: b
     let mut addr = va;
     while addr < va + npages * PAGESIZE {
         let unmapper = PageUnmapper { do_free };
-        let mut walker = PageTableWalkerMut {
+        let mut walker = PageTableWalkerMut::new(
             page_table,
-            va: addr,
-            level: PageTableLevel::Two,
-            extra: unmapper,
-        };
+            addr,
+            PageTableLevel::Two,
+            unmapper,
+        ).ok_or("unmap_page: virtual address over MAX address")?;
         walker.visit_mut()?;
 
         addr += PAGESIZE;
