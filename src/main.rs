@@ -3,6 +3,7 @@
 #![feature(alloc_error_handler)]
 #![feature(const_panic)]
 #![feature(ptr_metadata)] // from_raw_parts in kvm.rs
+#![feature(try_trait_v2)]
 #![no_main]
 #![no_std]
 

@@ -1,7 +1,7 @@
 use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
-use crate::vm::page_table::{PageTable, PageTableLevel};
+use crate::vm::page_table::{PageTable, PageTableLevel, PageTableEntry};
 use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
@@ -80,6 +80,111 @@ fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
         .expect("map_pages_error");
 }
 
+struct MapWalkerMut<'a, Extra> {
+    page_table: &'a mut PageTable,
+    va: VirtAddr,
+    level: PageTableLevel,
+    extra: Extra,
+}
+
+trait PageTableVisitor {
+    type Output : core::ops::Try;
+    fn check_va(&mut self, va: VirtAddr) -> Self::Output;
+    fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
+    fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
+}
+
+impl<Extra: PageTableVisitor> MapWalkerMut<'_, Extra> {
+    fn visit_mut(&mut self) -> Extra::Output {
+        let _ = self.extra.check_va(self.va)?;
+        let index = self.va.get_index(self.level);
+        let pte = &mut self.page_table[index];
+
+        match self.level.next_level() {
+            None => {
+                self.extra.leaf(pte)
+            }
+            Some(next_level) => {
+                let _ = self.extra.nonleaf(pte)?;
+
+                let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
+                self.page_table = next_table;
+                self.level = next_level;
+                self.visit_mut()
+            }
+        }
+    }
+}
+
+struct PageMapper {
+    pa: PhysAddr,
+    perm: PteFlag
+}
+
+impl PageTableVisitor for PageMapper {
+    type Output = Result<(), &'static str>;
+    fn check_va(&mut self, va: VirtAddr) -> Self::Output {
+        if va >= VirtAddr::new(MAXVA) {
+            return Err("map_page: virtual address over MAX address")
+        }
+        Ok(())
+    }
+
+    fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
+        if pte.is_unused() {
+            pte.set_addr(self.pa.as_pte(), self.perm | PteFlag::PTE_VALID);
+            Ok(())
+        } else {
+            Err("map_page: remap")
+        }
+    }
+
+    fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
+        if pte.is_unused() {
+            let ptr = kalloc();
+            if ptr == 0 as *mut u8 {
+                return Err("kalloc failed in map_page");
+            }
+            let addr = PhysAddr::new(ptr as *const _ as u64);
+            pte.set_addr(addr.as_pte(), PteFlag::PTE_VALID);
+        }
+        Ok(())
+    }
+}
+
+struct PageUnmapper {
+    do_free: bool
+}
+
+impl PageTableVisitor for PageUnmapper {
+    type Output = Result<(), &'static str>;
+    fn check_va(&mut self, va: VirtAddr) -> Self::Output {
+        if va >= VirtAddr::new(MAXVA) {
+            return Err("unmap_page: virtual address over MAX address")
+        }
+        Ok(())
+    }
+
+    fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
+        if pte.is_unused() {
+            Err("unmap_page: not mapped")
+        } else if pte.flag() == PteFlag::PTE_VALID {
+            Err("unmap_page: not leaf")
+        } else {
+            let addr = pte.addr();
+            kfree(addr as *mut _);
+            pte.set_unused();
+            Ok(())
+        }
+    }
+
+    fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output {
+        if pte.is_unused() {
+            return Err("unmap_page: walk");
+        }
+        Ok(())
+    }
+}
 /// Create PTEs for virtual addresses starting at va that refer to
 /// physical addresses starting at pa. va and size might not
 /// be page-aligned.
@@ -90,7 +195,15 @@ fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u
     let mut page_addr = va_start;
 
     loop {
-        map_page(page_table, page_addr, pa, perm, PageTableLevel::Two)?;
+        let mapper = PageMapper { pa, perm };
+        let mut walker = MapWalkerMut {
+            page_table,
+            va: page_addr,
+            level: PageTableLevel::Two,
+            extra: mapper
+        };
+        walker.visit_mut()?;
+
         if page_addr == va_end {
             break;
         }
@@ -99,38 +212,6 @@ fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u
     }
 
     Ok(())
-}
-
-fn map_page(page_table: &mut PageTable, va: VirtAddr, pa: PhysAddr, perm: PteFlag, level: PageTableLevel) -> Result<(), &'static str> {
-    if va >= VirtAddr::new(MAXVA) {
-        return Err("map_page: virtual address over MAX address")
-    }
-    let index = va.get_index(level);
-    let pte = &mut page_table[index];
-    match level.next_level() {
-        None => {
-            // Recursive end, write pte or error because of remap
-            if pte.is_unused() {
-                pte.set_addr(pa.as_pte(), perm | PteFlag::PTE_VALID);
-                Ok(())
-            } else {
-                Err("map_page: remap")
-            }
-        },
-        Some(next_level) => {
-            // Allocate space for page table and call map_page with next level
-            if pte.is_unused() {
-                let ptr = kalloc();
-                if ptr == 0 as *mut u8 {
-                    return Err("kalloc failed in map_page");
-                }
-                let addr = PhysAddr::new(ptr as *const _ as u64);
-                pte.set_addr(addr.as_pte(), PteFlag::PTE_VALID);
-            }
-            let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
-            map_page(next_table, va, pa, perm, next_level)
-        }
-    }
 }
 
 extern "C" {
@@ -205,42 +286,19 @@ fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: b
 
     let mut addr = va;
     while addr < va + npages * PAGESIZE {
-        unmap_page(page_table, addr, PageTableLevel::Two, do_free)?;
+        let unmapper = PageUnmapper { do_free };
+        let mut walker = MapWalkerMut {
+            page_table,
+            va: addr,
+            level: PageTableLevel::Two,
+            extra: unmapper,
+        };
+        walker.visit_mut()?;
+
         addr += PAGESIZE;
     }
 
     Ok(())
-}
-
-fn unmap_page(page_table: &mut PageTable, va: VirtAddr, level: PageTableLevel, do_free: bool) -> Result<(), &'static str> {
-    if va >= VirtAddr::new(MAXVA) {
-        return Err("unmap_page: virtual address over MAX address")
-    }
-    let index = va.get_index(level);
-    let pte = &mut page_table[index];
-    match level.next_level() {
-        None => {
-            // Recursive end
-            if pte.is_unused() {
-                Err("unmap_page: not mapped")
-            } else if pte.flag() == PteFlag::PTE_VALID {
-                Err("unmap_page: not leaf")
-            } else {
-                let addr = pte.addr();
-                kfree(addr as *mut _);
-                pte.set_unused();
-                Ok(())
-            }
-        },
-        Some(next_level) => {
-            // Allocate space for page table and call map_page with next level
-            if pte.is_unused() {
-                return Err("unmap_page: walk");
-            }
-            let next_table = unsafe { &mut *(pte.addr() as *mut PageTable) };
-            unmap_page(next_table, va, next_level, do_free)
-        }
-    }
 }
 
 fn free_pagetable(page_table: &mut PageTable, level: PageTableLevel) -> Result<(), &'static str> {
