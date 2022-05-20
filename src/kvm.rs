@@ -2,7 +2,7 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
 use crate::vm::page_table::{PageTable, PageTableLevel, PageTableEntry};
-use crate::vm::page_table_walker::{PageTableVisitor, PageTableWalkerMut};
+use crate::vm::page_table_walker::{PageTableVisitorMut, PageTableWalkerMut};
 use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
@@ -86,7 +86,7 @@ struct PageMapper {
     perm: PteFlag
 }
 
-impl PageTableVisitor for PageMapper {
+impl PageTableVisitorMut for PageMapper {
     type Output = Result<(), &'static str>;
     fn is_valid_va(&self, va: VirtAddr) -> bool {
         va < VirtAddr::new(MAXVA)
@@ -118,7 +118,7 @@ struct PageUnmapper {
     do_free: bool
 }
 
-impl PageTableVisitor for PageUnmapper {
+impl PageTableVisitorMut for PageUnmapper {
     type Output = Result<(), &'static str>;
     fn is_valid_va(&self, va: VirtAddr) -> bool {
         va < VirtAddr::new(MAXVA)
