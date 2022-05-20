@@ -2,7 +2,7 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
 
 use crate::vm::page_table::{PageTable, PageTableLevel, PageTableEntry};
-use crate::vm::page_table_walker::{PageTableVisitorMut, PageTableWalkerMut};
+use crate::vm::page_table_walker::{PageTableVisitorMut, PageTableWalkerMut, PageTableVisitor, PageTableWalker};
 use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
@@ -288,35 +288,39 @@ fn unmap_free(pagetable: &mut PageTable, size: u64) -> Result<(), &'static str> 
     Ok(())
 }
 
+struct AddrMapper;
+
+impl PageTableVisitor for AddrMapper {
+    type Output = Option<PhysAddr>;
+    fn is_valid_va(&self, va: VirtAddr) -> bool {
+        va < VirtAddr::new(MAXVA)
+    }
+    fn leaf(&self, pte: &PageTableEntry) -> Self::Output {
+        let flag = pte.flag();
+        if !flag.contains(PteFlag::PTE_VALID | PteFlag::PTE_USER) {
+            return None
+        }
+        Some(PhysAddr::new(pte.addr()))
+    }
+    fn nonleaf(&self, pte: &PageTableEntry) -> Self::Output {
+        let flag = pte.flag();
+        if !flag.contains(PteFlag::PTE_VALID) {
+            return None;
+        }
+        Some(PhysAddr::new(0))
+    }
+}
+
 /// Look up a virtual address, return Option physical address,
 /// Can only be used to look up user pages.
 fn map_addr(page_table: &PageTable, va: VirtAddr) -> Option<PhysAddr> {
-    if va >= VirtAddr::new(MAXVA) {
-        return None
-    }
-    map_addr_recur(page_table, va, PageTableLevel::Two)
-}
-
-fn map_addr_recur(page_table: &PageTable, va: VirtAddr, level: PageTableLevel) -> Option<PhysAddr> {
-    let index = va.get_index(level);
-    let pte = &page_table[index];
-    match level.next_level() {
-        None => {
-            let flag = pte.flag();
-            if !flag.contains(PteFlag::PTE_VALID | PteFlag::PTE_USER) {
-                return None
-            }
-            Some(PhysAddr::new(pte.addr()))
-        },
-        Some(next_level) => {
-            let flag = pte.flag();
-            if !flag.contains(PteFlag::PTE_VALID) {
-                return None;
-            }
-            let next_table = unsafe { &*(pte.addr() as *const PageTable) };
-            map_addr_recur(next_table, va, next_level)
-        }
-    }
+    let mapper = AddrMapper;
+    PageTableWalker::new(
+        page_table,
+        va,
+        PageTableLevel::Two,
+        mapper
+    ).and_then(|mut walker| walker.visit())
 }
 
 pub fn copy_in_str(page_table: &mut PageTable, addr: u64, buf: &mut [u8]) -> Option<u64> {
