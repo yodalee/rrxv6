@@ -179,32 +179,29 @@ extern "C" {
 
 pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
     // TODO make pagetable full of zero
-    if let Some(mut page_table_ptr) = NonNull::new(kalloc() as *mut _) {
-        let page_table = unsafe { page_table_ptr.as_mut() };
+    let mut page_table_ptr = NonNull::new(kalloc() as *mut _)?;
+    let page_table = unsafe { page_table_ptr.as_mut() };
 
-        // map the trampoline code (for system call return)
-        // at the highest user virtual address.
-        // only the supervisor uses it, on the way to/from user space, so not PTE_U.
-        let trampoline = PhysAddr::new(trampoline as u64);
-        if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAMPOLINE), trampoline, PAGESIZE,
+    // map the trampoline code (for system call return)
+    // at the highest user virtual address.
+    // only the supervisor uses it, on the way to/from user space, so not PTE_U.
+    let trampoline = PhysAddr::new(trampoline as u64);
+    if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAMPOLINE), trampoline, PAGESIZE,
             PteFlag::PTE_READ | PteFlag::PTE_EXEC) {
-                // TODO uvm free
-                // uvmfree(pagetable, 0);
-                return None;
-        };
+        // TODO uvm free
+        // uvmfree(pagetable, 0);
+        return None;
+    };
 
-        let trapframe = PhysAddr::new(proc.trapframe.as_ptr() as u64);
-        if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAPFRAME), trapframe, PAGESIZE,
-                PteFlag::PTE_READ | PteFlag::PTE_WRITE) {
-                // TODO uvm unmap, free
-                // uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-                // uvmfree(pagetable, 0);
-                return None;
-        };
-        Some(page_table_ptr)
-    } else {
-        None
-    }
+    let trapframe = PhysAddr::new(proc.trapframe.as_ptr() as u64);
+    if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAPFRAME), trapframe, PAGESIZE,
+            PteFlag::PTE_READ | PteFlag::PTE_WRITE) {
+        // TODO uvm unmap, free
+        // uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+        // uvmfree(pagetable, 0);
+        return None;
+    };
+    Some(page_table_ptr)
 }
 
 pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {

@@ -100,11 +100,10 @@ pub fn forkret() {
     unsafe {
         usertrapret();
     }
-
 }
 
 /// setup user process
-pub fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
+fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
     // allocate memory for trapframe
     proc.trapframe = NonNull::new(kalloc() as *mut _)
         .ok_or("kalloc failed in alloc user trapframe")?;
@@ -126,10 +125,8 @@ pub fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
 pub fn init_userproc() {
     let scheduler = get_scheduler();
 
-    let mut proc = match scheduler.unused.pop() {
-        None => panic!("init_userproc failed"),
-        Some(proc) => proc,
-    };
+    let mut proc = scheduler.unused.pop()
+        .expect("init_userproc failed");
 
     match alloc_process(&mut proc) {
         Err(_s) => {
@@ -151,7 +148,7 @@ pub fn init_userproc() {
             // we don't save additional pointer to this process
             assert!(proc.pid == 0, "User process init pid != 0");
 
-            // initialize trapfraem
+            // initialize trapframe
             unsafe {
                 let trapframe = proc.trapframe.as_mut();
                 trapframe.epc = 0;
