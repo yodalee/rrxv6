@@ -42,9 +42,12 @@ use crate::trap::init_harttrap;
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
+use core::sync::atomic::{AtomicBool, Ordering};
+use rv64::asm::sync_synchronize;
 
 #[no_mangle]
 pub fn main() -> ! {
+    static KERNEL_STARTED: AtomicBool = AtomicBool::new(false);
     if get_cpuid() == 0 {
         init_scheduler(); // initialize scheduler for schedule
         init_cpu();       // initialize cpu struct
@@ -61,7 +64,17 @@ pub fn main() -> ! {
 
         init_userproc();  // create first user process
 
-        println!("OS started");
+        sync_synchronize();
+        KERNEL_STARTED.swap(true, Ordering::Relaxed);
+    } else {
+        while !KERNEL_STARTED.load(Ordering::Relaxed) {
+        }
+        sync_synchronize();
+        println!("hart {} starting", get_cpuid());
+        init_page();      // initialize virtual memory
+        init_harttrap();  // install kernel trap vector
+        init_plic();      // initialize PLIC interrupt controller
+        init_hartplic();  // ask PLIC for device interrupt
     }
 
     let scheduler = get_scheduler();
