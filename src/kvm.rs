@@ -188,17 +188,15 @@ pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
     let trampoline = PhysAddr::new(trampoline as u64);
     if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAMPOLINE), trampoline, PAGESIZE,
             PteFlag::PTE_READ | PteFlag::PTE_EXEC) {
-        // TODO uvm free
-        // uvmfree(pagetable, 0);
+        unmap_free(page_table, 0);
         return None;
     };
 
     let trapframe = PhysAddr::new(proc.trapframe.as_ptr() as u64);
     if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAPFRAME), trapframe, PAGESIZE,
             PteFlag::PTE_READ | PteFlag::PTE_WRITE) {
-        // TODO uvm unmap, free
-        // uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-        // uvmfree(pagetable, 0);
+        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false);
+        unmap_free(page_table, 0);
         return None;
     };
     Some(page_table_ptr)
@@ -275,13 +273,13 @@ fn free_pagetable(page_table: &mut PageTable, level: PageTableLevel) -> Result<(
     Ok(())
 }
 
-fn unmap_free(pagetable: &mut PageTable, size: u64) -> Result<(), &'static str> {
+fn unmap_free(page_table: &mut PageTable, size: u64) -> Result<(), &'static str> {
     if size > 0 {
         let va = VirtAddr::new(0);
         let npages = align_up(size, PAGESIZE) / PAGESIZE;
-        unmap_pages(pagetable, va, npages, true)?;
+        unmap_pages(page_table, va, npages, true)?;
     }
-    free_pagetable(pagetable, PageTableLevel::Two)?;
+    free_pagetable(page_table, PageTableLevel::Two)?;
     Ok(())
 }
 
