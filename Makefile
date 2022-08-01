@@ -13,3 +13,20 @@ $U/initcode: $U/initcode.S
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $U/initcode.out $U/initcode.o
 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
 	$(OBJDUMP) -S $U/initcode.o > $U/initcode.asm
+
+QEMU = qemu-system-riscv64
+CPUS := 1
+KERNEL = target/riscv64imac-unknown-none-elf/debug/rrxv6
+
+QEMUOPTS = -machine virt -bios none -m 128M -smp $(CPUS) -nographic
+# use virtio v1.0
+QEMUOPTS += -global virtio-mmio.force-legacy=false
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS += -kernel ${KERNEL}
+qemu:
+	${QEMU} ${QEMUOPTS}
+
+qemu_debug:
+	@echo "Run: 'riscv64-elf-gdb -q ${KERNEL}' in another terminal"
+	${QEMU} -S -s ${QEMUOPTS}
