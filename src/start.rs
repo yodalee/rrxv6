@@ -15,6 +15,8 @@ use rv64::csr::satp::Satp;
 use rv64::csr::sie::Sie;
 use rv64::register::tp;
 
+use core::arch::asm;
+
 #[no_mangle]
 static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE * param::NCPU];
 
