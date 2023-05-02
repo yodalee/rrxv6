@@ -27,6 +27,7 @@ mod start;
 mod syscall;
 mod trap;
 mod uart;
+mod virtio;
 mod vm;
 
 use crate::cpu::{get_cpuid, init_cpu};
