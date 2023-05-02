@@ -54,12 +54,85 @@ pub struct VirtioHeader {
 }
 
 impl VirtioHeader {
+    /// Initialize the device.
+    ///
+    /// Ref: virtio 3.1.1 Device Initialization
+    pub fn begin_init(&mut self, negotiate_features: impl FnOnce(u64) -> u64) -> Result<(), ()> {
+        unsafe {
+            self.status.write(DeviceStatus::ACKNOWLEDGE);
+            self.status.write(DeviceStatus::DRIVER);
+            let features = self.read_device_features();
+            self.write_driver_features(negotiate_features(features));
+            self.status.write(DeviceStatus::FEATURES_OK);
+            // check that status keep in FEATURES_OK
+            if self.status.read() != DeviceStatus::FEATURES_OK {
+                return Err(());
+            }
+        }
+        Ok(())
+    }
+
+    pub fn end_init(&mut self) {
+        unsafe {
+            let mut status = self.status.read();
+            status |= DeviceStatus::DRIVER_OK;
+            self.status.write(status);
+        }
+    }
+
+    fn read_device_features(&self) -> u64 {
+        unsafe {
+            self.device_features_sel.write(0);
+            let mut device_features = self.device_features.read().into();
+            self.device_features_sel.write(1);
+            device_features |= (self.device_features.read() as u64) << 32;
+            device_features
+        }
+    }
+
+    fn write_driver_features(&mut self, driver_features: u64) {
+        unsafe {
+            self.driver_features_sel.write(0);
+            self.driver_features.write(driver_features as u32);
+            self.driver_features_sel.write(1);
+            self.driver_features.write((driver_features >> 32) as u32)
+        }
+    }
+
     /// Verify header
     pub fn verify(&self) -> bool {
         self.magic.read() == 0x74726976
             && self.version.read() == 2
             && self.device_id.read() == 2
             && self.vendor_id.read() == 0x554D4551
+    }
+
+    /// Check queue status
+    pub fn queue_used(&mut self, idx: u32) -> bool {
+        unsafe {
+            self.queue_sel.write(idx);
+        }
+        self.queue_ready.read() != 0
+    }
+
+    /// check queue num
+    pub fn max_queue_size(&mut self) -> u32 {
+        self.queue_num_max.read()
+    }
+
+    /// set queue num
+    pub fn set_queue(&mut self, idx: u32, size: u16) {
+        unsafe {
+            self.queue_sel.write(idx);
+            self.queue_num.write(size as u32);
+        }
+    }
+
+    /// set queue ready
+    pub fn set_queue_ready(&mut self, ready: bool) {
+        unsafe {
+            self.queue_ready.write(if ready { 1 } else { 0 });
+        }
     }
 }
 
