@@ -12,8 +12,9 @@ use bitflags::bitflags;
 ///
 /// ref: 5.2 Block Device
 pub struct VirtioBlock {
-    header: &'static mut VirtioHeader,
-    queue: VirtioQueue,
+    pub header: &'static mut VirtioHeader,
+    // FIXME: expose method instead of public access
+    pub queue: VirtioQueue,
 }
 
 impl VirtioBlock {
@@ -80,4 +81,19 @@ bitflags! {
         /// This feature indicates that the driver passes extra data (besides identifying the virtqueue) in its device notifications.
         const NOTIFICATION_DATA = 1 << 38;
     }
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct BlockRequest {
+    pub typ: RequestType,
+    pub reserved: u32,
+    pub sector: u64,
+}
+
+#[repr(u32)]
+#[derive(Debug)]
+pub enum RequestType {
+    In = 0,
+    Out = 1,
 }

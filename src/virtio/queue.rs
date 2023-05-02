@@ -16,10 +16,10 @@ pub struct VirtioQueue {
     size: u16,
 
     /// address of descriptor
-    desc: NonNull<Descriptor>,
+    pub desc: NonNull<Descriptor>,
 
     /// address of available ring
-    avail: NonNull<AvailRing>,
+    pub avail: NonNull<AvailRing>,
 
     /// address of used ring
     used: NonNull<UsedRing>,
@@ -69,15 +69,16 @@ impl VirtioQueue {
     }
 }
 
-struct Descriptor {
+// FIXME: expose interface instead of public access
+pub struct Descriptor {
     /// Address
-    addr: u64,
+    pub addr: u64,
     /// Length
-    len: u32,
+    pub len: u32,
     /// The flags
-    flags: DescriptorFlag,
+    pub flags: DescriptorFlag,
     /// Next field if flags & NEXT
-    next: u16,
+    pub next: u16,
 }
 
 bitflags! {
@@ -91,11 +92,12 @@ bitflags! {
     }
 }
 
-struct AvailRing {
-    flags: AvailRingFlag,
-    idx: u16,
-    ring: [u16; 32],
-    used_event: u16,
+// FIXME: expose interface instead of public access
+pub struct AvailRing {
+    pub flags: AvailRingFlag,
+    pub idx: u16,
+    pub ring: [u16; 32],
+    pub used_event: u16,
 }
 
 bitflags! {

@@ -33,14 +33,14 @@ mod virtio;
 mod vm;
 
 use crate::cpu::{get_cpuid, init_cpu};
-use crate::disk::init_disk;
+use crate::disk::{init_disk, read_disk};
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::print::println;
 use crate::proc::{init_proc, init_userproc};
 use crate::scheduler::{init_scheduler, get_scheduler};
-use crate::trap::init_harttrap;
+use crate::trap::{init_harttrap, intr_on, intr_off};
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -79,6 +79,12 @@ pub fn main() -> ! {
         init_plic();      // initialize PLIC interrupt controller
         init_hartplic();  // ask PLIC for device interrupt
     }
+
+    // experimentally trigger the read function with interrupt
+    // uncomment to see the effect
+    // intr_on();
+    // read_disk();
+    // intr_off();
 
     let scheduler = get_scheduler();
     // start scheduling, this function shall not return
