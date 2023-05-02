@@ -94,5 +94,6 @@ pub fn init_hartplic() {
     let hart = get_cpuid();
     let plic = Plic::new();
     plic.set_enable(hart, PlicContext::Supervisor, UART0_IRQ);
+    plic.set_enable(hart, PlicContext::Supervisor, VIRTIO0_IRQ);
     plic.set_threshold(hart, PlicContext::Supervisor, 0);
 }
