@@ -22,7 +22,7 @@ impl VirtioBlock {
                 | BlockFeatures::RING_EVENT_IDX
                 | BlockFeatures::RING_INDIRECT_DESC;
             (features - disable_features).bits()
-        })?;
+        }).ok();
         header.end_init();
 
         Ok(Self { header })

@@ -1,3 +1,5 @@
+use super::Error;
+
 use bitflags::bitflags;
 use volatile_register::{RO, RW, WO};
 
@@ -57,7 +59,7 @@ impl VirtioHeader {
     /// Initialize the device.
     ///
     /// Ref: virtio 3.1.1 Device Initialization
-    pub fn begin_init(&mut self, negotiate_features: impl FnOnce(u64) -> u64) -> Result<(), ()> {
+    pub fn begin_init(&mut self, negotiate_features: impl FnOnce(u64) -> u64) -> Result<(), Error> {
         unsafe {
             self.status.write(DeviceStatus::ACKNOWLEDGE);
             self.status.write(DeviceStatus::DRIVER);
@@ -66,7 +68,7 @@ impl VirtioHeader {
             self.status.write(DeviceStatus::FEATURES_OK);
             // check that status keep in FEATURES_OK
             if self.status.read() != DeviceStatus::FEATURES_OK {
-                return Err(());
+                return Err(Error::HeaderInitError);
             }
         }
         Ok(())
