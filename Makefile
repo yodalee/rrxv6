@@ -6,6 +6,7 @@ AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
+GDB = riscv64-elf-gdb
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 
 $U/initcode: $U/initcode.S
@@ -30,3 +31,6 @@ qemu:
 qemu_debug:
 	@echo "Run: 'riscv64-elf-gdb -q ${KERNEL}' in another terminal"
 	${QEMU} -S -s ${QEMUOPTS}
+
+gdb:
+	${GDB} -q ${KERNEL}
