@@ -1,5 +1,6 @@
 pub mod block;
 pub mod header;
+pub mod queue;
 
 #[derive(Debug)]
 pub enum Error {
