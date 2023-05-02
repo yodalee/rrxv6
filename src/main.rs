@@ -11,6 +11,7 @@ extern crate rv64;
 
 mod console;
 mod cpu;
+mod disk;
 mod kalloc;
 mod kvm;
 mod list;
@@ -31,6 +32,7 @@ mod virtio;
 mod vm;
 
 use crate::cpu::{get_cpuid, init_cpu};
+use crate::disk::init_disk;
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
@@ -60,6 +62,7 @@ pub fn main() -> ! {
         init_harttrap();  // install kernel trap vector
         init_plic();      // initialize PLIC interrupt controller
         init_hartplic();  // ask PLIC for device interrupt
+        init_disk();      // emulated hard disk
 
         init_userproc();  // create first user process
 

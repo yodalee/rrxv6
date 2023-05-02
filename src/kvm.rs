@@ -6,7 +6,7 @@ use crate::vm::page_table_walker::{PageTableVisitorMut, PageTableWalkerMut, Page
 use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
 use crate::vm::page_flag::PteFlag;
 use crate::riscv::{PAGESIZE, MAXVA};
-use crate::memorylayout::{UART0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
+use crate::memorylayout::{UART0, VIRTIO0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
 use crate::kalloc::{kalloc, kfree};
 use crate::param::NPROC;
 use crate::proc::Proc;
@@ -30,6 +30,10 @@ pub fn init_kvm() {
 
     // map UART registers
     kvmmap(VirtAddr::new(UART0), PhysAddr::new(UART0), PAGESIZE,
+           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+
+    // map VIRTIO registers
+    kvmmap(VirtAddr::new(VIRTIO0), PhysAddr::new(VIRTIO0), PAGESIZE,
            PteFlag::PTE_READ | PteFlag::PTE_WRITE);
 
     // map PLIC registers
