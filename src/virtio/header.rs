@@ -121,10 +121,16 @@ impl VirtioHeader {
     }
 
     /// set queue num
-    pub fn set_queue(&mut self, idx: u32, size: u16) {
+    pub fn set_queue(&mut self, idx: u32, size: u16, desc: u64, avail: u64, used: u64) {
         unsafe {
             self.queue_sel.write(idx);
             self.queue_num.write(size as u32);
+            self.queue_desc_low.write(desc as u32);
+            self.queue_desc_high.write((desc >> 32) as u32);
+            self.queue_driver_low.write(avail as u32);
+            self.queue_driver_high.write((avail >> 32) as u32);
+            self.queue_device_low.write(used as u32);
+            self.queue_device_high.write((used >> 32) as u32);
         }
     }
 

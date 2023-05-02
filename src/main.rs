@@ -2,6 +2,7 @@
 #![feature(alloc_error_handler)]
 #![feature(ptr_metadata)] // from_raw_parts in kvm.rs
 #![feature(try_trait_v2)]
+#![feature(strict_provenance)] // NonNull.addr
 #![no_main]
 #![no_std]
 

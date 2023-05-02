@@ -1,6 +1,10 @@
+use crate::kalloc::kalloc;
+
 use super::header::VirtioHeader;
 use super::Error;
 use bitflags::bitflags;
+
+use core::ptr::NonNull;
 
 pub const MAX_QUEUE_SIZE: usize = 32768;
 
@@ -10,13 +14,25 @@ pub struct VirtioQueue {
 
     /// size of the queue
     size: u16,
+
+    /// address of descriptor
+    desc: NonNull<Descriptor>,
+
+    /// address of available ring
+    avail: NonNull<AvailRing>,
+
+    /// address of used ring
+    used: NonNull<UsedRing>,
 }
 
 impl VirtioQueue {
     pub fn new(header: &mut VirtioHeader, idx: u32, size: u16) -> Result<Self, Error> {
+        // ensure queue is not in used
         if header.queue_used(idx) {
             return Err(Error::AlreadyUsed);
         }
+
+        // check maximum queue size
         let max = header.max_queue_size();
         if max == 0 {
             return Err(Error::NotAvailable);
@@ -25,9 +41,31 @@ impl VirtioQueue {
             return Err(Error::InvalidArguments);
         }
 
-        header.set_queue(idx, size);
+        // allocate and zero queue memory.
+        // note that kalloc will fill memory with 0 for us
+        let desc = NonNull::new(kalloc() as *mut _).ok_or(Error::NoMemory)?;
+        let avail = NonNull::new(kalloc() as *mut _).ok_or(Error::NoMemory)?;
+        let used = NonNull::new(kalloc() as *mut _).ok_or(Error::NoMemory)?;
 
-        Ok(Self { idx, size })
+        // write physical address
+        header.set_queue(
+            idx,
+            size,
+            desc.addr().get() as u64,
+            avail.addr().get() as u64,
+            used.addr().get() as u64,
+        );
+
+        // set queue ready
+        header.set_queue_ready(/*ready=*/ true);
+
+        Ok(Self {
+            idx,
+            size,
+            desc,
+            avail,
+            used,
+        })
     }
 }
 
