@@ -11,7 +11,7 @@ pub fn init_disk() {
         Ok(block) => unsafe {
             DISK = Some(block);
         },
-        Err(()) => panic!("Error: Disk initialization"),
+        Err(_err) => panic!("Error: Disk initialization"),
     }
 }
 

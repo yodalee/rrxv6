@@ -1,4 +1,6 @@
 use super::header::VirtioHeader;
+use super::queue::VirtioQueue;
+use super::Error;
 
 use bitflags::bitflags;
 
@@ -11,10 +13,11 @@ use bitflags::bitflags;
 /// ref: 5.2 Block Device
 pub struct VirtioBlock {
     header: &'static mut VirtioHeader,
+    queue: VirtioQueue,
 }
 
 impl VirtioBlock {
-    pub fn new(header: &'static mut VirtioHeader) -> Result<Self, ()> {
+    pub fn new(header: &'static mut VirtioHeader) -> Result<Self, Error> {
         header.begin_init(|features| {
             let features = BlockFeatures::from_bits_truncate(features);
             let disable_features = BlockFeatures::RO
@@ -22,10 +25,12 @@ impl VirtioBlock {
                 | BlockFeatures::RING_EVENT_IDX
                 | BlockFeatures::RING_INDIRECT_DESC;
             (features - disable_features).bits()
-        }).ok();
+        })?;
+
+        let queue = VirtioQueue::new(header, 0, 8)?;
         header.end_init();
 
-        Ok(Self { header })
+        Ok(Self { header, queue })
     }
 }
 
