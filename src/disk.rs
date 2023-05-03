@@ -7,14 +7,11 @@ use spin::Mutex;
 static mut DISK: Mutex<Option<VirtioBlock>> = Mutex::new(None);
 
 pub fn init_disk() {
-    let header = unsafe { &mut *(VIRTIO0 as *mut VirtioHeader) };
-    let block = VirtioBlock::new(header);
-    match block {
-        Ok(block) => unsafe {
-            let mut disk = DISK.lock();
-            *disk = Some(block);
-        },
-        Err(_err) => panic!("Error: Disk initialization"),
+    let header = VirtioHeader::new(VIRTIO0).expect("Error: Disk header initialization");
+    let block = VirtioBlock::new(header).expect("Error: Disk initialization");
+    unsafe {
+        let mut disk = DISK.lock();
+        *disk = Some(block);
     }
 }
 

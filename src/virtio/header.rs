@@ -56,6 +56,13 @@ pub struct VirtioHeader {
 }
 
 impl VirtioHeader {
+    pub fn new<'a>(addr: u64) -> Result<&'a mut Self, Error> {
+        let header = unsafe { &mut *(addr as *mut Self) };
+        match header.verify() {
+            true => Ok(header),
+            false => Err(Error::HeaderInitError),
+        }
+    }
     /// Initialize the device.
     ///
     /// Ref: virtio 3.1.1 Device Initialization
@@ -140,6 +147,13 @@ impl VirtioHeader {
     pub fn set_queue_ready(&mut self, ready: bool) {
         unsafe {
             self.queue_ready.write(if ready { 1 } else { 0 });
+        }
+    }
+
+    /// set queue notify value
+    pub fn set_queue_notify(&mut self, v: u16) {
+        unsafe {
+            self.queue_notify.write(v.into());
         }
     }
 }
