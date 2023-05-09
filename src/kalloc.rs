@@ -1,28 +1,21 @@
-
-use alloc::alloc::{alloc, dealloc};
-use alloc::alloc::Layout;
 use crate::memorylayout;
 use crate::riscv::PAGESIZE;
 use crate::ALLOCATOR;
+use alloc::alloc::Layout;
+use alloc::alloc::{alloc, dealloc};
 
 use core::ptr::write_bytes;
 
 pub fn init_heap() {
-  extern "C" {
-    // _END defined in linker.ld
-    static _END: usize;
-  }
+    extern "C" {
+        // _END defined in linker.ld
+        static _END: usize;
+    }
 
-  let heap_start: usize = unsafe {
-    &_END as *const usize as usize
-  };
-  let heap_end = memorylayout::PHYSTOP as usize;
-  let heap_size = heap_end - heap_start;
-  unsafe {
-    ALLOCATOR
-      .lock()
-      .init(heap_start, heap_size)
-  }
+    let heap_start: usize = unsafe { &_END as *const usize as usize };
+    let heap_end = memorylayout::PHYSTOP as usize;
+    let heap_size = heap_end - heap_start;
+    unsafe { ALLOCATOR.lock().init(heap_start, heap_size) }
 }
 
 /// Allocate one 4096-byte page of physical memory.

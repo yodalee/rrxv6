@@ -2,10 +2,10 @@ use crate::console::CONSOLE;
 use crate::memorylayout;
 use crate::param::UART_TX_BUF_SIZE;
 
-use volatile_register::RW;
 use bitflags::bitflags;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use volatile_register::RW;
 
 lazy_static! {
     pub static ref UART: Mutex<Uart> = Mutex::new(Uart::new());
@@ -46,7 +46,7 @@ struct UartRegister {
 }
 
 pub struct Uart {
-    tx_buf: [char;UART_TX_BUF_SIZE],
+    tx_buf: [char; UART_TX_BUF_SIZE],
     write_idx: usize,
     read_idx: usize,
     p: &'static mut UartRegister,
@@ -55,7 +55,7 @@ pub struct Uart {
 impl Uart {
     fn new() -> Self {
         let mut uart = Uart {
-            tx_buf: ['\0';UART_TX_BUF_SIZE],
+            tx_buf: ['\0'; UART_TX_BUF_SIZE],
             write_idx: 0,
             read_idx: 0,
             p: unsafe { &mut *(memorylayout::UART0 as *mut UartRegister) },
@@ -81,7 +81,9 @@ impl Uart {
             self.p.lcr.write(LcrFlag::LENGTH_8.bits());
 
             // reset and enable FIFOs
-            self.p.isr.write((FcrFlag::FIFO_ENABLE | FcrFlag::FIFO_CLEAR_RX | FcrFlag::FIFO_CLEAR_TX).bits());
+            self.p.isr.write(
+                (FcrFlag::FIFO_ENABLE | FcrFlag::FIFO_CLEAR_RX | FcrFlag::FIFO_CLEAR_TX).bits(),
+            );
         }
 
         // enable transmit and receive interruit
@@ -144,7 +146,7 @@ impl Uart {
                 Some(c) => {
                     let mut console = CONSOLE.lock();
                     console.console_interrupt(c, self);
-                },
+                }
                 None => break,
             }
         }

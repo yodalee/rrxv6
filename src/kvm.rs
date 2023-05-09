@@ -1,19 +1,23 @@
-use rv64::csr::satp::{Satp, SatpMode};
 use rv64::asm::sfence_vma;
+use rv64::csr::satp::{Satp, SatpMode};
 
-use crate::vm::page_table::{PageTable, PageTableLevel, PageTableEntry};
-use crate::vm::page_table_walker::{PageTableVisitorMut, PageTableWalkerMut, PageTableVisitor, PageTableWalker};
-use crate::vm::addr::{VirtAddr, PhysAddr, align_up, align_down};
-use crate::vm::page_flag::PteFlag;
-use crate::riscv::{PAGESIZE, MAXVA};
-use crate::memorylayout::{UART0, VIRTIO0, PLIC_BASE, TRAMPOLINE, TRAPFRAME, KERNELBASE, PHYSTOP, kstack};
 use crate::kalloc::{kalloc, kfree};
+use crate::memorylayout::{
+    kstack, KERNELBASE, PHYSTOP, PLIC_BASE, TRAMPOLINE, TRAPFRAME, UART0, VIRTIO0,
+};
 use crate::param::NPROC;
 use crate::proc::Proc;
+use crate::riscv::{MAXVA, PAGESIZE};
+use crate::vm::addr::{align_down, align_up, PhysAddr, VirtAddr};
+use crate::vm::page_flag::PteFlag;
+use crate::vm::page_table::{PageTable, PageTableEntry, PageTableLevel};
+use crate::vm::page_table_walker::{
+    PageTableVisitor, PageTableVisitorMut, PageTableWalker, PageTableWalkerMut,
+};
 
-use core::ptr::{NonNull, copy, write_bytes};
-use core::slice::from_raw_parts;
 use core::cmp;
+use core::ptr::{copy, write_bytes, NonNull};
+use core::slice::from_raw_parts;
 
 static mut KERNELPAGE: Option<&mut PageTable> = None;
 
@@ -29,28 +33,53 @@ pub fn init_kvm() {
     }
 
     // map UART registers
-    kvmmap(VirtAddr::new(UART0), PhysAddr::new(UART0), PAGESIZE,
-           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+    kvmmap(
+        VirtAddr::new(UART0),
+        PhysAddr::new(UART0),
+        PAGESIZE,
+        PteFlag::PTE_READ | PteFlag::PTE_WRITE,
+    );
 
     // map VIRTIO registers
-    kvmmap(VirtAddr::new(VIRTIO0), PhysAddr::new(VIRTIO0), PAGESIZE,
-           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+    kvmmap(
+        VirtAddr::new(VIRTIO0),
+        PhysAddr::new(VIRTIO0),
+        PAGESIZE,
+        PteFlag::PTE_READ | PteFlag::PTE_WRITE,
+    );
 
     // map PLIC registers
-    kvmmap(VirtAddr::new(PLIC_BASE), PhysAddr::new(PLIC_BASE), 0x400000, PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+    kvmmap(
+        VirtAddr::new(PLIC_BASE),
+        PhysAddr::new(PLIC_BASE),
+        0x400000,
+        PteFlag::PTE_READ | PteFlag::PTE_WRITE,
+    );
 
     // map kernel text read and executable
-    kvmmap(VirtAddr::new(KERNELBASE), PhysAddr::new(KERNELBASE), petext - KERNELBASE,
-           PteFlag::PTE_READ | PteFlag::PTE_EXEC);
+    kvmmap(
+        VirtAddr::new(KERNELBASE),
+        PhysAddr::new(KERNELBASE),
+        petext - KERNELBASE,
+        PteFlag::PTE_READ | PteFlag::PTE_EXEC,
+    );
 
     // map kernel data and physical ram
-    kvmmap(VirtAddr::new(petext), PhysAddr::new(petext), PHYSTOP as u64 - petext,
-           PteFlag::PTE_READ | PteFlag::PTE_WRITE);
+    kvmmap(
+        VirtAddr::new(petext),
+        PhysAddr::new(petext),
+        PHYSTOP as u64 - petext,
+        PteFlag::PTE_READ | PteFlag::PTE_WRITE,
+    );
 
     // map the trampoline to the highest virtual address in the kernel
     // for trap enter/exit
-    kvmmap(VirtAddr::new(TRAMPOLINE), PhysAddr::new(ptrampoline), PAGESIZE,
-           PteFlag::PTE_READ | PteFlag::PTE_EXEC);
+    kvmmap(
+        VirtAddr::new(TRAMPOLINE),
+        PhysAddr::new(ptrampoline),
+        PAGESIZE,
+        PteFlag::PTE_READ | PteFlag::PTE_EXEC,
+    );
 
     // alloc and map stack for kernel process
     for i in 0u64..NPROC as u64 {
@@ -81,13 +110,12 @@ pub unsafe fn get_root_page() -> &'static mut PageTable {
 /// only used when booting before enable paging.
 fn kvmmap(va: VirtAddr, pa: PhysAddr, size: u64, perm: PteFlag) {
     let page_table = unsafe { get_root_page() };
-    map_pages(page_table, va, pa, size, perm)
-        .expect("map_pages_error");
+    map_pages(page_table, va, pa, size, perm).expect("map_pages_error");
 }
 
 struct PageMapper {
     pa: PhysAddr,
-    perm: PteFlag
+    perm: PteFlag,
 }
 
 impl PageTableVisitorMut for PageMapper {
@@ -119,7 +147,7 @@ impl PageTableVisitorMut for PageMapper {
 }
 
 struct PageUnmapper {
-    do_free: bool
+    do_free: bool,
 }
 
 impl PageTableVisitorMut for PageUnmapper {
@@ -152,19 +180,22 @@ impl PageTableVisitorMut for PageUnmapper {
 /// physical addresses starting at pa. va and size might not
 /// be page-aligned.
 /// Return Errs if it cannot allocate the needed page-table.
-fn map_pages(page_table: &mut PageTable, va: VirtAddr, mut pa: PhysAddr, size: u64, perm: PteFlag) -> Result<(), &'static str> {
+fn map_pages(
+    page_table: &mut PageTable,
+    va: VirtAddr,
+    mut pa: PhysAddr,
+    size: u64,
+    perm: PteFlag,
+) -> Result<(), &'static str> {
     let va_start = va.align_down();
     let va_end = VirtAddr::new_truncate(va.as_u64() + size - 1).align_down();
     let mut page_addr = va_start;
 
     loop {
         let mapper = PageMapper { pa, perm };
-        let mut walker = PageTableWalkerMut::new(
-            page_table,
-            page_addr,
-            PageTableLevel::Two,
-            mapper
-        ).ok_or("map_page: virtual address over MAX address")?;
+        let mut walker =
+            PageTableWalkerMut::new(page_table, page_addr, PageTableLevel::Two, mapper)
+                .ok_or("map_page: virtual address over MAX address")?;
         walker.visit_mut()?;
 
         if page_addr == va_end {
@@ -190,15 +221,25 @@ pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
     // at the highest user virtual address.
     // only the supervisor uses it, on the way to/from user space, so not PTE_U.
     let trampoline = PhysAddr::new(trampoline as u64);
-    if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAMPOLINE), trampoline, PAGESIZE,
-            PteFlag::PTE_READ | PteFlag::PTE_EXEC) {
+    if let Err(_e) = map_pages(
+        page_table,
+        VirtAddr::new(TRAMPOLINE),
+        trampoline,
+        PAGESIZE,
+        PteFlag::PTE_READ | PteFlag::PTE_EXEC,
+    ) {
         unmap_free(page_table, 0);
         return None;
     };
 
     let trapframe = PhysAddr::new(proc.trapframe.as_ptr() as u64);
-    if let Err(_e) = map_pages(page_table, VirtAddr::new(TRAPFRAME), trapframe, PAGESIZE,
-            PteFlag::PTE_READ | PteFlag::PTE_WRITE) {
+    if let Err(_e) = map_pages(
+        page_table,
+        VirtAddr::new(TRAPFRAME),
+        trapframe,
+        PAGESIZE,
+        PteFlag::PTE_READ | PteFlag::PTE_WRITE,
+    ) {
         unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false);
         unmap_free(page_table, 0);
         return None;
@@ -218,8 +259,7 @@ pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {
         let va = VirtAddr::new(0);
         let pa = PhysAddr::new(ptr as u64);
         let perm = PteFlag::PTE_READ | PteFlag::PTE_WRITE | PteFlag::PTE_EXEC | PteFlag::PTE_USER;
-        map_pages(page_table, va, pa, PAGESIZE, perm)
-            .expect("init_uvm");
+        map_pages(page_table, va, pa, PAGESIZE, perm).expect("init_uvm");
         copy::<u8>(code.as_ptr() as *const u8, ptr, size);
     }
 }
@@ -227,9 +267,9 @@ pub fn init_uvm(page_table: &mut PageTable, code: &[u8]) {
 pub fn clear_user_pagetable(proc: &mut Proc) {
     unsafe {
         let page_table = proc.pagetable.as_mut();
-        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false).and(
-        unmap_pages(page_table, VirtAddr::new(TRAPFRAME), 1, false)).and(
-        unmap_free(page_table, proc.memory_size))
+        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false)
+            .and(unmap_pages(page_table, VirtAddr::new(TRAPFRAME), 1, false))
+            .and(unmap_free(page_table, proc.memory_size))
             .expect("unmap_pages error");
     }
 }
@@ -237,7 +277,12 @@ pub fn clear_user_pagetable(proc: &mut Proc) {
 /// Remove npages of mappings starting fom va. va must be page-aligned.
 /// panic! if mappings is not exist.
 /// Optional: free the physical memory.
-fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: bool) -> Result<(), &'static str> {
+fn unmap_pages(
+    page_table: &mut PageTable,
+    va: VirtAddr,
+    npages: u64,
+    do_free: bool,
+) -> Result<(), &'static str> {
     if !va.is_align() {
         return Err("unmap_pages: not aligned");
     }
@@ -245,12 +290,8 @@ fn unmap_pages(page_table: &mut PageTable, va: VirtAddr, npages: u64, do_free: b
     let mut addr = va;
     while addr < va + npages * PAGESIZE {
         let unmapper = PageUnmapper { do_free };
-        let mut walker = PageTableWalkerMut::new(
-            page_table,
-            addr,
-            PageTableLevel::Two,
-            unmapper,
-        ).ok_or("unmap_page: virtual address over MAX address")?;
+        let mut walker = PageTableWalkerMut::new(page_table, addr, PageTableLevel::Two, unmapper)
+            .ok_or("unmap_page: virtual address over MAX address")?;
         walker.visit_mut()?;
 
         addr += PAGESIZE;
@@ -297,7 +338,7 @@ impl PageTableVisitor for AddrMapper {
     fn leaf(&self, pte: &PageTableEntry) -> Self::Output {
         let flag = pte.flag();
         if !flag.contains(PteFlag::PTE_VALID | PteFlag::PTE_USER) {
-            return None
+            return None;
         }
         Some(PhysAddr::new(pte.addr()))
     }
@@ -314,12 +355,8 @@ impl PageTableVisitor for AddrMapper {
 /// Can only be used to look up user pages.
 fn map_addr(page_table: &PageTable, va: VirtAddr) -> Option<PhysAddr> {
     let mapper = AddrMapper;
-    PageTableWalker::new(
-        page_table,
-        va,
-        PageTableLevel::Two,
-        mapper
-    ).and_then(|mut walker| walker.visit())
+    PageTableWalker::new(page_table, va, PageTableLevel::Two, mapper)
+        .and_then(|mut walker| walker.visit())
 }
 
 pub fn copy_in_str(page_table: &mut PageTable, addr: u64, buf: &mut [u8]) -> Option<u64> {

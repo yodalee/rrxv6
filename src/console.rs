@@ -21,7 +21,7 @@ lazy_static! {
 }
 
 pub struct Console {
-    buf: [char;CONSOLE_BUF_SIZE],
+    buf: [char; CONSOLE_BUF_SIZE],
     read_idx: usize,
     write_idx: usize,
     edit_idx: usize,
@@ -30,7 +30,7 @@ pub struct Console {
 impl Console {
     pub fn new() -> Self {
         Self {
-            buf: ['\0';CONSOLE_BUF_SIZE],
+            buf: ['\0'; CONSOLE_BUF_SIZE],
             read_idx: 0,
             write_idx: 0,
             edit_idx: 0,
@@ -45,7 +45,7 @@ impl Console {
     // uart.handle_interrupt calls this for input character.
     pub fn console_interrupt(&mut self, c: char, uart: &mut Uart) {
         match c {
-            '\0' => {}, // Do nothing if it is a null character
+            '\0' => {} // Do nothing if it is a null character
             _ => {
                 // echo character to user
                 self.console_putc(c, uart);

@@ -2,22 +2,22 @@
 
 include!(concat!(env!("OUT_DIR"), "/initcode.rs"));
 
-use crate::memorylayout::kstack;
-use crate::param::{NPROC, LEN_PROCNAME};
-use crate::proc_util::{Context, TrapFrame};
-use crate::scheduler::get_scheduler;
 use crate::kalloc::{kalloc, kfree};
+use crate::kvm::{clear_user_pagetable, init_user_pagetable, init_uvm};
+use crate::memorylayout::kstack;
+use crate::param::{LEN_PROCNAME, NPROC};
+use crate::proc_util::{Context, TrapFrame};
 use crate::riscv::PAGESIZE;
-use crate::vm::page_table::PageTable;
-use crate::kvm::{init_user_pagetable, init_uvm, clear_user_pagetable};
+use crate::scheduler::get_scheduler;
 use crate::trap::usertrapret;
+use crate::vm::page_table::PageTable;
 
 use alloc::boxed::Box;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use core::ptr::NonNull;
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 /// Process state
-#[derive(Eq,PartialEq)]
+#[derive(Eq, PartialEq)]
 pub enum ProcState {
     RUNNABLE,
     RUNNING,
@@ -35,7 +35,7 @@ pub struct Proc {
     pub kstack: u64,
     pub pid: usize,
     pub memory_size: u64,
-    pub name: [u8;LEN_PROCNAME],
+    pub name: [u8; LEN_PROCNAME],
     pub trapframe: NonNull<TrapFrame>,
     pub pagetable: NonNull<PageTable>,
 }
@@ -48,7 +48,7 @@ impl Proc {
             kstack,
             pid: 0,
             memory_size: 0,
-            name: [0;LEN_PROCNAME],
+            name: [0; LEN_PROCNAME],
             trapframe: NonNull::dangling(),
             pagetable: NonNull::dangling(),
         }
@@ -69,11 +69,11 @@ impl Proc {
         self.context.reset();
         self.pid = 0;
         self.memory_size = 0;
-        self.name = [0;LEN_PROCNAME];
+        self.name = [0; LEN_PROCNAME];
     }
 
     pub fn set_name(&mut self, s: &str) {
-        for (dest,src) in self.name.iter_mut().zip(s.bytes()) {
+        for (dest, src) in self.name.iter_mut().zip(s.bytes()) {
             *dest = src;
         }
     }
@@ -83,9 +83,7 @@ impl Proc {
 pub fn init_proc() {
     let scheduler = get_scheduler();
     for i in 0..NPROC {
-        let proc = Box::new(Proc::new(
-            kstack(i as u64)
-        ));
+        let proc = Box::new(Proc::new(kstack(i as u64)));
         scheduler.unused.push(proc)
     }
 }
@@ -94,8 +92,7 @@ pub fn forkret() {
     static FIRST_USER_PROCESS: AtomicBool = AtomicBool::new(true);
 
     let is_first = FIRST_USER_PROCESS.swap(false, Ordering::Relaxed);
-    if is_first {
-    }
+    if is_first {}
 
     unsafe {
         usertrapret();
@@ -105,12 +102,11 @@ pub fn forkret() {
 /// setup user process
 fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
     // allocate memory for trapframe
-    proc.trapframe = NonNull::new(kalloc() as *mut _)
-        .ok_or("kalloc failed in alloc user trapframe")?;
+    proc.trapframe =
+        NonNull::new(kalloc() as *mut _).ok_or("kalloc failed in alloc user trapframe")?;
 
     // allocate memory for pagetable
-    proc.pagetable = init_user_pagetable(&proc)
-        .ok_or("kalloc failed in alloc user pagetable")?;
+    proc.pagetable = init_user_pagetable(&proc).ok_or("kalloc failed in alloc user pagetable")?;
 
     // setup new context to start execution at forkret.
     // forkret will return to user space
@@ -125,8 +121,7 @@ fn alloc_process(proc: &mut Proc) -> Result<(), &str> {
 pub fn init_userproc() {
     let scheduler = get_scheduler();
 
-    let mut proc = scheduler.unused.pop()
-        .expect("init_userproc failed");
+    let mut proc = scheduler.unused.pop().expect("init_userproc failed");
 
     match alloc_process(&mut proc) {
         Err(_s) => {
@@ -163,6 +158,6 @@ pub fn init_userproc() {
 
             let mut used_list = scheduler.used.lock();
             used_list.push(proc);
-        },
+        }
     }
 }

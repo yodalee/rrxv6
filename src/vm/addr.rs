@@ -1,25 +1,28 @@
-use bit_field::BitField;
 use super::page_table::{PageTableIndex, PageTableLevel};
+use bit_field::BitField;
 
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 #[derive(Debug, Clone)]
 pub struct InvalidVirtAddr;
 
-#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtAddr(u64);
 
 /// A 64-bits physical memory address.
 ///
 /// A wrapper type around `u64`
 /// On riscv, only lower 56 bits can be used, top 8 bits must be zeroed.
-#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysAddr(u64);
 
 impl VirtAddr {
     #[inline]
     pub fn new(addr: u64) -> Self {
-        Self::try_new(addr).expect(&format!("Virtual address in riscv should have bit 39-63 copied from bit 38 {}", addr))
+        Self::try_new(addr).expect(&format!(
+            "Virtual address in riscv should have bit 39-63 copied from bit 38 {}",
+            addr
+        ))
     }
 
     /// Try to create a new virtual address.
@@ -28,7 +31,7 @@ impl VirtAddr {
         match addr.get_bits(38..64) {
             0 | 0x3ffffff => Ok(VirtAddr(addr)),   // valid address
             1 => Ok(VirtAddr::new_truncate(addr)), // address need sign extend
-            _ => Err(InvalidVirtAddr{}),
+            _ => Err(InvalidVirtAddr {}),
         }
     }
 
@@ -50,16 +53,12 @@ impl VirtAddr {
 
     #[inline]
     pub fn align_down(self) -> Self {
-        Self(
-            align_down(self.0, 4096)
-        )
+        Self(align_down(self.0, 4096))
     }
 
     #[inline]
     pub fn align_up(self) -> Self {
-        Self(
-            align_up(self.0, 4096)
-        )
+        Self(align_up(self.0, 4096))
     }
 
     /// Return the 9 bits level 0 page table index from offset [12,20]
@@ -91,9 +90,9 @@ impl VirtAddr {
     #[inline]
     pub const fn get_index(self, level: PageTableLevel) -> PageTableIndex {
         match level {
-            PageTableLevel::Zero  => self.p0_index(),
-            PageTableLevel::One   => self.p1_index(),
-            PageTableLevel::Two   => self.p2_index(),
+            PageTableLevel::Zero => self.p0_index(),
+            PageTableLevel::One => self.p1_index(),
+            PageTableLevel::Two => self.p2_index(),
             PageTableLevel::Three => self.p3_index(),
         }
     }
@@ -169,15 +168,18 @@ pub struct InvalidPhysAddr;
 impl PhysAddr {
     #[inline]
     pub fn new(addr: u64) -> Self {
-        Self::try_new(addr).expect(&format!("Physical address in riscv should have bit 56-63 zeroed {}", addr))
+        Self::try_new(addr).expect(&format!(
+            "Physical address in riscv should have bit 56-63 zeroed {}",
+            addr
+        ))
     }
 
     /// Try to create a new physical address.
     #[inline]
     pub fn try_new(addr: u64) -> Result<PhysAddr, InvalidPhysAddr> {
         match addr.get_bits(56..64) {
-            0 => Ok(PhysAddr(addr)),   // valid address
-            _ => Err(InvalidPhysAddr{}),
+            0 => Ok(PhysAddr(addr)), // valid address
+            _ => Err(InvalidPhysAddr {}),
         }
     }
 
@@ -199,16 +201,12 @@ impl PhysAddr {
 
     #[inline]
     pub fn align_down(self) -> Self {
-        Self(
-            align_down(self.0, 4096)
-        )
+        Self(align_down(self.0, 4096))
     }
 
     #[inline]
     pub fn align_up(self) -> Self {
-        Self(
-            align_up(self.0, 4096)
-        )
+        Self(align_up(self.0, 4096))
     }
 }
 
@@ -279,7 +277,7 @@ impl SubAssign<usize> for PhysAddr {
 #[inline]
 pub const fn align_down(addr: u64, align: u64) -> u64 {
     assert!(align.is_power_of_two());
-    addr & !(align -1)
+    addr & !(align - 1)
 }
 
 #[inline]

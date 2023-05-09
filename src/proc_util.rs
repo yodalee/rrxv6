@@ -1,4 +1,3 @@
-
 //! Context of a process
 
 use core::default::Default;
@@ -7,15 +6,15 @@ type Reg = u64;
 
 /// Saved Register for Context Switch
 #[repr(C)]
-#[derive(Debug,Default,Clone,Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Context {
     /// return address
-    pub ra:  Reg,
+    pub ra: Reg,
     /// stack pointer
-    pub sp:  Reg,
+    pub sp: Reg,
 
     /// Callee saved register
-    pub s: [Reg;12],
+    pub s: [Reg; 12],
 }
 
 impl Context {
@@ -23,14 +22,14 @@ impl Context {
         Self {
             ra: 0,
             sp: 0,
-            s: [0;12]
+            s: [0; 12],
         }
     }
 
     pub fn reset(&mut self) {
         self.ra = 0;
         self.sp = 0;
-        self.s = [0;12];
+        self.s = [0; 12];
     }
 }
 
@@ -53,44 +52,44 @@ impl Context {
 /// return-to-user path via usertrapret() doesn't return through
 /// the entire kernel call stack.
 #[repr(C)]
-#[derive(Debug,Default,Clone,Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct TrapFrame {
-  pub kernel_satp: Reg,   //   0 kernel page table
-  pub kernel_sp: Reg,     //   8 top of process's kernel stack
-  pub kernel_trap: Reg,   //  16 usertrap()
-  pub epc: Reg,           //  24 saved user program counter
-  pub kernel_hartid: Reg, //  32 saved kernel tp
-  pub ra: Reg,            //  40
-  pub sp: Reg,            //  48
-  pub gp: Reg,            //  56
-  pub tp: Reg,            //  64
-  pub t0: Reg,            //  72
-  pub t1: Reg,            //  80
-  pub t2: Reg,            //  88
-  pub s0: Reg,            //  96
-  pub s1: Reg,            // 104
-  pub a0: Reg,            // 112
-  pub a1: Reg,            // 120
-  pub a2: Reg,            // 128
-  pub a3: Reg,            // 136
-  pub a4: Reg,            // 144
-  pub a5: Reg,            // 152
-  pub a6: Reg,            // 160
-  pub a7: Reg,            // 168
-  pub s2: Reg,            // 176
-  pub s3: Reg,            // 184
-  pub s4: Reg,            // 192
-  pub s5: Reg,            // 200
-  pub s6: Reg,            // 208
-  pub s7: Reg,            // 216
-  pub s8: Reg,            // 224
-  pub s9: Reg,            // 232
-  pub s10: Reg,           // 240
-  pub s11: Reg,           // 248
-  pub t3: Reg,            // 256
-  pub t4: Reg,            // 264
-  pub t5: Reg,            // 272
-  pub t6: Reg,            // 280
+    pub kernel_satp: Reg,   //   0 kernel page table
+    pub kernel_sp: Reg,     //   8 top of process's kernel stack
+    pub kernel_trap: Reg,   //  16 usertrap()
+    pub epc: Reg,           //  24 saved user program counter
+    pub kernel_hartid: Reg, //  32 saved kernel tp
+    pub ra: Reg,            //  40
+    pub sp: Reg,            //  48
+    pub gp: Reg,            //  56
+    pub tp: Reg,            //  64
+    pub t0: Reg,            //  72
+    pub t1: Reg,            //  80
+    pub t2: Reg,            //  88
+    pub s0: Reg,            //  96
+    pub s1: Reg,            // 104
+    pub a0: Reg,            // 112
+    pub a1: Reg,            // 120
+    pub a2: Reg,            // 128
+    pub a3: Reg,            // 136
+    pub a4: Reg,            // 144
+    pub a5: Reg,            // 152
+    pub a6: Reg,            // 160
+    pub a7: Reg,            // 168
+    pub s2: Reg,            // 176
+    pub s3: Reg,            // 184
+    pub s4: Reg,            // 192
+    pub s5: Reg,            // 200
+    pub s6: Reg,            // 208
+    pub s7: Reg,            // 216
+    pub s8: Reg,            // 224
+    pub s9: Reg,            // 232
+    pub s10: Reg,           // 240
+    pub s11: Reg,           // 248
+    pub t3: Reg,            // 256
+    pub t4: Reg,            // 264
+    pub t5: Reg,            // 272
+    pub t6: Reg,            // 280
 }
 
 impl TrapFrame {

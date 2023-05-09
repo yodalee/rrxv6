@@ -1,7 +1,7 @@
 //! list struct that are used in scheduler
 
-use core::ptr;
 use alloc::boxed::Box;
+use core::ptr;
 
 type Link<T> = *mut Node<T>;
 
@@ -12,7 +12,7 @@ pub struct List<T> {
 
 struct Node<T> {
     elem: T,
-    next: Link<T>
+    next: Link<T>,
 }
 
 impl<T> List<T> {
@@ -61,20 +61,16 @@ impl<T> List<T> {
     }
 
     pub fn peek(&self) -> Option<&T> {
-        unsafe {
-            self.head.as_ref().map(|node| &node.elem)
-        }
+        unsafe { self.head.as_ref().map(|node| &node.elem) }
     }
 
     pub fn peek_mut(&mut self) -> Option<&mut T> {
-        unsafe {
-            self.head.as_mut().map(|node| &mut node.elem)
-        }
+        unsafe { self.head.as_mut().map(|node| &mut node.elem) }
     }
 }
 
 impl<T> Drop for List<T> {
     fn drop(&mut self) {
-        while let Some(_) = self.pop() { }
+        while let Some(_) = self.pop() {}
     }
 }
