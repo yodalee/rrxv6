@@ -12,7 +12,7 @@ use spin::Mutex;
 use alloc::boxed::Box;
 
 use crate::cpu::{get_cpu, get_cpuid, get_proc};
-use crate::memorylayout::{UART0_IRQ, TRAMPOLINE, TRAPFRAME};
+use crate::memorylayout::{UART0_IRQ, VIRTIO0_IRQ, TRAMPOLINE, TRAPFRAME};
 use crate::plic::{Plic, PlicContext};
 use crate::proc::{Proc, ProcState};
 use crate::riscv::{Interrupt, Exception, PAGESIZE};
@@ -99,6 +99,9 @@ fn handle_external_interrupt() {
             let mut uart = UART.lock();
             uart.handle_interrupt();
         },
+        VIRTIO0_IRQ => {
+            panic!("VIRTIO IRQ");
+        }
         _ => {},
     }
 

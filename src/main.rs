@@ -2,6 +2,7 @@
 #![feature(alloc_error_handler)]
 #![feature(ptr_metadata)] // from_raw_parts in kvm.rs
 #![feature(try_trait_v2)]
+#![feature(strict_provenance)] // NonNull.addr
 #![no_main]
 #![no_std]
 
@@ -11,6 +12,7 @@ extern crate rv64;
 
 mod console;
 mod cpu;
+mod disk;
 mod kalloc;
 mod kvm;
 mod list;
@@ -27,16 +29,18 @@ mod start;
 mod syscall;
 mod trap;
 mod uart;
+mod virtio;
 mod vm;
 
 use crate::cpu::{get_cpuid, init_cpu};
+use crate::disk::{init_disk, read_disk};
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
 use crate::plic::{init_plic, init_hartplic};
 use crate::print::println;
 use crate::proc::{init_proc, init_userproc};
 use crate::scheduler::{init_scheduler, get_scheduler};
-use crate::trap::init_harttrap;
+use crate::trap::{init_harttrap, intr_on, intr_off};
 
 use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
@@ -59,6 +63,7 @@ pub fn main() -> ! {
         init_harttrap();  // install kernel trap vector
         init_plic();      // initialize PLIC interrupt controller
         init_hartplic();  // ask PLIC for device interrupt
+        init_disk();      // emulated hard disk
 
         init_userproc();  // create first user process
 
@@ -74,6 +79,12 @@ pub fn main() -> ! {
         init_plic();      // initialize PLIC interrupt controller
         init_hartplic();  // ask PLIC for device interrupt
     }
+
+    // experimentally trigger the read function with interrupt
+    // uncomment to see the effect
+    // intr_on();
+    // read_disk();
+    // intr_off();
 
     let scheduler = get_scheduler();
     // start scheduling, this function shall not return
