@@ -4,9 +4,9 @@ use crate::proc::{Proc, ProcState};
 use crate::proc_util::Context;
 use crate::trap::intr_on;
 use alloc::boxed::Box;
-use spin::Mutex;
-use rv64::asm::wfi;
 use core::ptr::null_mut;
+use rv64::asm::wfi;
+use spin::Mutex;
 
 extern "Rust" {
     // store ctx1 and load ctx2
@@ -17,7 +17,7 @@ static mut SCHEDULER: Option<Scheduler> = None;
 
 pub struct Scheduler {
     pub used: Mutex<List<Box<Proc>>>,
-    pub unused: List<Box<Proc>>
+    pub unused: List<Box<Proc>>,
 }
 
 impl Scheduler {
@@ -42,12 +42,14 @@ impl Scheduler {
                     proc.state = ProcState::RUNNING;
                     unsafe {
                         cpu.proc = &mut proc as *mut Box<Proc>;
-                        switch(&mut cpu.context as *mut Context,
-                               &mut proc.context as *mut Context);
+                        switch(
+                            &mut cpu.context as *mut Context,
+                            &mut proc.context as *mut Context,
+                        );
                     }
                     let mut used_list = self.used.lock();
                     used_list.push(proc);
-                },
+                }
                 None => {
                     intr_on();
                     wfi();
@@ -58,9 +60,7 @@ impl Scheduler {
 }
 
 pub fn get_scheduler() -> &'static mut Scheduler {
-    unsafe {
-        SCHEDULER.as_mut().unwrap()
-    }
+    unsafe { SCHEDULER.as_mut().unwrap() }
 }
 
 pub fn init_scheduler() {
@@ -77,7 +77,9 @@ pub fn yield_proc() {
         cpu.proc = null_mut();
         proc.state = ProcState::RUNNABLE;
 
-        switch(&mut proc.context as *mut Context,
-               &mut cpu.context as *mut Context);
+        switch(
+            &mut proc.context as *mut Context,
+            &mut cpu.context as *mut Context,
+        );
     }
 }

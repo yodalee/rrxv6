@@ -2,24 +2,24 @@ use rv64::csr::satp::{Satp, SatpMode};
 use rv64::csr::scause::Scause;
 use rv64::csr::sepc::Sepc;
 use rv64::csr::sip::Sip;
-use rv64::csr::sstatus::{Sstatus, Mode};
-use rv64::csr::stvec::Stvec;
+use rv64::csr::sstatus::{Mode, Sstatus};
 use rv64::csr::stval::Stval;
+use rv64::csr::stvec::Stvec;
 use rv64::register::tp;
 
+use alloc::boxed::Box;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use alloc::boxed::Box;
 
 use crate::cpu::{get_cpu, get_cpuid, get_proc};
-use crate::memorylayout::{UART0_IRQ, VIRTIO0_IRQ, TRAMPOLINE, TRAPFRAME};
+use crate::memorylayout::{TRAMPOLINE, TRAPFRAME, UART0_IRQ, VIRTIO0_IRQ};
 use crate::plic::{Plic, PlicContext};
+use crate::println;
 use crate::proc::{Proc, ProcState};
-use crate::riscv::{Interrupt, Exception, PAGESIZE};
+use crate::riscv::{Exception, Interrupt, PAGESIZE};
 use crate::scheduler::yield_proc;
 use crate::syscall::syscall;
 use crate::uart::UART;
-use crate::println;
 
 lazy_static! {
     static ref TICK: Mutex<u64> = Mutex::new(0);
@@ -98,11 +98,11 @@ fn handle_external_interrupt() {
         UART0_IRQ => {
             let mut uart = UART.lock();
             uart.handle_interrupt();
-        },
+        }
         VIRTIO0_IRQ => {
             panic!("VIRTIO IRQ");
         }
-        _ => {},
+        _ => {}
     }
 
     if irq != 0 {
@@ -165,14 +165,14 @@ pub fn kerneltrap() {
                     yield_proc();
                 }
             }
-        },
+        }
         None => {
             let scause = Scause::from_read().bits();
             let sepc = Sepc::from_read().bits();
             let stval = Stval::from_read().bits();
             println!("scause {:x} sepc={:x} stval={:x}", scause, sepc, stval);
             panic!("kerneltrap");
-        },
+        }
         _ => (),
     }
 
@@ -196,10 +196,10 @@ pub unsafe fn usertrapret() {
     // the process next re-enters the kernel.
     let trapframe = (*proc).trapframe.as_mut();
     let satp = Satp::from_read();
-    trapframe.kernel_satp = satp.bits();             // kernel page table
+    trapframe.kernel_satp = satp.bits(); // kernel page table
     trapframe.kernel_sp = (*proc).kstack + PAGESIZE; // process's kernel stack
     trapframe.kernel_trap = usertrap as u64;
-    trapframe.kernel_hartid = tp::read();            // hartid for cpuid()
+    trapframe.kernel_hartid = tp::read(); // hartid for cpuid()
 
     // set up the registers that trampoline.S's sret will use
     // to get to user space.
@@ -253,7 +253,7 @@ pub fn usertrap() {
         match interrupt_handler() {
             Some(x) if x == Interrupt::SupervisorSoftware as u64 => {
                 yield_proc();
-            },
+            }
             None => {
                 // TODO just kill process, don't panic
                 let pid = unsafe { (*proc).pid };
@@ -267,7 +267,7 @@ pub fn usertrap() {
         }
     } else {
         match code {
-            x if x == Exception::EnvironmentCallUMode as u64 =>  {
+            x if x == Exception::EnvironmentCallUMode as u64 => {
                 // system call
                 // TODO: check process is killed
 

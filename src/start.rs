@@ -10,7 +10,7 @@ use rv64::csr::mie::Mie;
 use rv64::csr::mscratch::Mscratch;
 use rv64::csr::mstatus;
 use rv64::csr::mtvec::Mtvec;
-use rv64::csr::pmp::{PMPConfigMode,PMPConfigAddress,PMPAddress,PMPConfig};
+use rv64::csr::pmp::{PMPAddress, PMPConfig, PMPConfigAddress, PMPConfigMode};
 use rv64::csr::satp::Satp;
 use rv64::csr::sie::Sie;
 use rv64::register::tp;
@@ -18,12 +18,12 @@ use rv64::register::tp;
 use core::arch::asm;
 
 #[no_mangle]
-static STACK0: [u8;param::OS_STACK_SIZE * param::NCPU] = [0;param::OS_STACK_SIZE * param::NCPU];
+static STACK0: [u8; param::OS_STACK_SIZE * param::NCPU] = [0; param::OS_STACK_SIZE * param::NCPU];
 
 #[no_mangle]
-static mut TIMER_SCRATCH: [[u64;5];param::NCPU] = [[0u64;5];param::NCPU];
+static mut TIMER_SCRATCH: [[u64; 5]; param::NCPU] = [[0u64; 5]; param::NCPU];
 
-const INTERVAL : u64 = 1000000;
+const INTERVAL: u64 = 1000000;
 
 extern "C" {
     fn timervec();
@@ -106,7 +106,9 @@ fn start() -> ! {
     PMPConfig::write(config);
 
     // Switch to supervisor mode and jump to main
-    unsafe { asm!("mret"); }
+    unsafe {
+        asm!("mret");
+    }
 
     // mret will jump into kernel, should not execute to here
     loop {}

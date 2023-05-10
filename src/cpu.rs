@@ -1,14 +1,13 @@
-
 //! The data owned by each CPU
 
-use rv64::register::tp;
-use spin::Mutex;
 use crate::param::NCPU;
 use crate::proc::Proc;
 use crate::proc_util::Context;
-use crate::trap::{push_off, pop_off};
+use crate::trap::{pop_off, push_off};
 use alloc::boxed::Box;
 use core::ptr;
+use rv64::register::tp;
+use spin::Mutex;
 
 pub struct Cpu {
     pub proc: *mut Box<Proc>, // the process id running on this cpu
@@ -28,9 +27,9 @@ impl Cpu {
     }
 }
 
-static mut CPU: [Option<Cpu>;NCPU] = {
+static mut CPU: [Option<Cpu>; NCPU] = {
     const INIT_CPU: Option<Cpu> = None;
-    [INIT_CPU;NCPU]
+    [INIT_CPU; NCPU]
 };
 
 pub fn init_cpu() {
@@ -50,9 +49,7 @@ pub fn get_cpuid() -> u64 {
 
 pub fn get_cpu() -> &'static mut Cpu {
     let id = get_cpuid() as usize;
-    unsafe {
-        CPU[id].as_mut().unwrap()
-    }
+    unsafe { CPU[id].as_mut().unwrap() }
 }
 
 pub fn get_proc() -> *mut Box<Proc> {

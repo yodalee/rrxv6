@@ -1,6 +1,6 @@
-use core::panic::PanicInfo;
-use crate::trap::{push_off, pop_off};
+use crate::trap::{pop_off, push_off};
 use crate::uart::UART;
+use core::panic::PanicInfo;
 
 #[macro_export]
 macro_rules! println {

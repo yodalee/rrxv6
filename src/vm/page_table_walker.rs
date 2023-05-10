@@ -1,7 +1,6 @@
 use super::addr::VirtAddr;
 use super::page_table::{PageTable, PageTableEntry, PageTableLevel};
 
-
 pub struct PageTableWalkerMut<'a, Extra> {
     pub page_table: &'a mut PageTable,
     pub va: VirtAddr,
@@ -10,31 +9,32 @@ pub struct PageTableWalkerMut<'a, Extra> {
 }
 
 pub trait PageTableVisitorMut {
-    type Output : core::ops::Try;
+    type Output: core::ops::Try;
     fn is_valid_va(&self, va: VirtAddr) -> bool;
     fn leaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
     fn nonleaf(&mut self, pte: &mut PageTableEntry) -> Self::Output;
 }
 
 impl<'a, Extra: PageTableVisitorMut> PageTableWalkerMut<'a, Extra> {
-    pub fn new(page_table: &'a mut PageTable, va: VirtAddr, level: PageTableLevel, extra: Extra) -> Option<Self> {
-        extra.is_valid_va(va).then(
-            move || Self {
-                page_table,
-                va,
-                level,
-                extra
-            }
-        )
+    pub fn new(
+        page_table: &'a mut PageTable,
+        va: VirtAddr,
+        level: PageTableLevel,
+        extra: Extra,
+    ) -> Option<Self> {
+        extra.is_valid_va(va).then(move || Self {
+            page_table,
+            va,
+            level,
+            extra,
+        })
     }
     pub fn visit_mut(&mut self) -> Extra::Output {
         let index = self.va.get_index(self.level);
         let pte = &mut self.page_table[index];
 
         match self.level.next_level() {
-            None => {
-                self.extra.leaf(pte)
-            }
+            None => self.extra.leaf(pte),
             Some(next_level) => {
                 let _ = self.extra.nonleaf(pte)?;
 
@@ -55,31 +55,32 @@ pub struct PageTableWalker<'a, Extra> {
 }
 
 pub trait PageTableVisitor {
-    type Output : core::ops::Try;
+    type Output: core::ops::Try;
     fn is_valid_va(&self, va: VirtAddr) -> bool;
     fn leaf(&self, pte: &PageTableEntry) -> Self::Output;
     fn nonleaf(&self, pte: &PageTableEntry) -> Self::Output;
 }
 
 impl<'a, Extra: PageTableVisitor> PageTableWalker<'a, Extra> {
-    pub fn new(page_table: &'a PageTable, va: VirtAddr, level: PageTableLevel, extra: Extra) -> Option<Self> {
-        extra.is_valid_va(va).then(
-            move || Self {
-                page_table,
-                va,
-                level,
-                extra
-            }
-        )
+    pub fn new(
+        page_table: &'a PageTable,
+        va: VirtAddr,
+        level: PageTableLevel,
+        extra: Extra,
+    ) -> Option<Self> {
+        extra.is_valid_va(va).then(move || Self {
+            page_table,
+            va,
+            level,
+            extra,
+        })
     }
     pub fn visit(&mut self) -> Extra::Output {
         let index = self.va.get_index(self.level);
         let pte = &self.page_table[index];
 
         match self.level.next_level() {
-            None => {
-                self.extra.leaf(pte)
-            }
+            None => self.extra.leaf(pte),
             Some(next_level) => {
                 let _ = self.extra.nonleaf(pte)?;
 

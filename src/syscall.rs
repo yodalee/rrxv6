@@ -5,16 +5,19 @@ use crate::println;
 use alloc::string::String;
 use lazy_static::lazy_static;
 
-const SYSCALL_NUM : usize = 1;
+const SYSCALL_NUM: usize = 1;
 type SyscallEntry = fn() -> u64;
 lazy_static! {
-    static ref SYSCALLS: [SyscallEntry;SYSCALL_NUM] = [
-        syscall_write
-    ];
+    static ref SYSCALLS: [SyscallEntry; SYSCALL_NUM] = [syscall_write];
 }
 
 enum ArgIndex {
-    A0, A1, A2, A3, A4, A5,
+    A0,
+    A1,
+    A2,
+    A3,
+    A4,
+    A5,
 }
 
 /// get u64 raw value store in trapframe->a0 to trapframe->a6
@@ -39,7 +42,7 @@ fn get_str(n: ArgIndex, buf: &mut [u8]) -> u64 {
     let page_table = unsafe { (*proc).pagetable.as_mut() };
     match copy_in_str(page_table, addr, buf) {
         None => u64::MAX,
-        Some(len) => len
+        Some(len) => len,
     }
 }
 
@@ -56,7 +59,7 @@ pub fn syscall() {
     unsafe {
         let proc = get_proc();
         let trapframe = (*proc).trapframe.as_mut();
-        let syscall_id : usize = trapframe.a7 as usize;
+        let syscall_id: usize = trapframe.a7 as usize;
 
         trapframe.a0 = if syscall_id < SYSCALLS.len() {
             SYSCALLS[syscall_id]()

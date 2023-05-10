@@ -36,15 +36,15 @@ use crate::cpu::{get_cpuid, init_cpu};
 use crate::disk::{init_disk, read_disk};
 use crate::kalloc::init_heap;
 use crate::kvm::{init_kvm, init_page};
-use crate::plic::{init_plic, init_hartplic};
+use crate::plic::{init_hartplic, init_plic};
 use crate::print::println;
 use crate::proc::{init_proc, init_userproc};
-use crate::scheduler::{init_scheduler, get_scheduler};
-use crate::trap::{init_harttrap, intr_on, intr_off};
+use crate::scheduler::{get_scheduler, init_scheduler};
+use crate::trap::{init_harttrap, intr_off, intr_on};
 
-use linked_list_allocator::LockedHeap;
 use alloc::alloc::Layout;
 use core::sync::atomic::{AtomicBool, Ordering};
+use linked_list_allocator::LockedHeap;
 use rv64::asm::sync_synchronize;
 
 #[no_mangle]
@@ -52,32 +52,31 @@ pub fn main() -> ! {
     static KERNEL_STARTED: AtomicBool = AtomicBool::new(false);
     if get_cpuid() == 0 {
         init_scheduler(); // initialize scheduler for schedule
-        init_cpu();       // initialize cpu struct
+        init_cpu(); // initialize cpu struct
 
         println!("rrxv6 start");
 
-        init_heap();      // initialize physical memory allocator
-        init_kvm();       // initialize kernel page table
-        init_page();      // initialize virtual memory
-        init_proc();      // initialize process table
-        init_harttrap();  // install kernel trap vector
-        init_plic();      // initialize PLIC interrupt controller
-        init_hartplic();  // ask PLIC for device interrupt
-        init_disk();      // emulated hard disk
+        init_heap(); // initialize physical memory allocator
+        init_kvm(); // initialize kernel page table
+        init_page(); // initialize virtual memory
+        init_proc(); // initialize process table
+        init_harttrap(); // install kernel trap vector
+        init_plic(); // initialize PLIC interrupt controller
+        init_hartplic(); // ask PLIC for device interrupt
+        init_disk(); // emulated hard disk
 
-        init_userproc();  // create first user process
+        init_userproc(); // create first user process
 
         sync_synchronize();
         KERNEL_STARTED.swap(true, Ordering::Relaxed);
     } else {
-        while !KERNEL_STARTED.load(Ordering::Relaxed) {
-        }
+        while !KERNEL_STARTED.load(Ordering::Relaxed) {}
         sync_synchronize();
         println!("hart {} starting", get_cpuid());
-        init_page();      // initialize virtual memory
-        init_harttrap();  // install kernel trap vector
-        init_plic();      // initialize PLIC interrupt controller
-        init_hartplic();  // ask PLIC for device interrupt
+        init_page(); // initialize virtual memory
+        init_harttrap(); // install kernel trap vector
+        init_plic(); // initialize PLIC interrupt controller
+        init_hartplic(); // ask PLIC for device interrupt
     }
 
     // experimentally trigger the read function with interrupt
