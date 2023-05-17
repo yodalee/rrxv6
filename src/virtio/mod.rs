@@ -3,6 +3,7 @@ pub mod header;
 pub mod queue;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Error {
     /// Device status not OK
     HeaderInitError,

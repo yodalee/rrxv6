@@ -25,6 +25,7 @@ impl PageTableIndex {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(dead_code)]
 pub enum PageTableLevel {
     /// Level 0, table of page
     Zero = 0,
