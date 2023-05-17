@@ -8,12 +8,14 @@ pub const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1);
 // Maximum Interrupt Count
 pub const MAX_INTERRUPT: u64 = 1024;
 
+#[allow(dead_code)]
 pub enum Interrupt {
     SupervisorSoftware = 1,
     SupervisorTimer = 5,
     SupervisorExternal = 9,
 }
 
+#[allow(dead_code)]
 pub enum Exception {
     InstructionAddressMisaligned = 0,
     InstructionAccessFault = 1,

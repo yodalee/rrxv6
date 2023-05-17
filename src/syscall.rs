@@ -11,6 +11,7 @@ lazy_static! {
     static ref SYSCALLS: [SyscallEntry; SYSCALL_NUM] = [syscall_write];
 }
 
+#[allow(dead_code)]
 enum ArgIndex {
     A0,
     A1,

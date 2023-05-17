@@ -228,7 +228,7 @@ pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
         PAGESIZE,
         PteFlag::PTE_READ | PteFlag::PTE_EXEC,
     ) {
-        unmap_free(page_table, 0);
+        unmap_free(page_table, 0).unwrap();
         return None;
     };
 
@@ -240,8 +240,8 @@ pub fn init_user_pagetable(proc: &Proc) -> Option<NonNull<PageTable>> {
         PAGESIZE,
         PteFlag::PTE_READ | PteFlag::PTE_WRITE,
     ) {
-        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false);
-        unmap_free(page_table, 0);
+        unmap_pages(page_table, VirtAddr::new(TRAMPOLINE), 1, false).unwrap();
+        unmap_free(page_table, 0).unwrap();
         return None;
     };
     Some(page_table_ptr)

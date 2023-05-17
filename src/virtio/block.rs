@@ -93,6 +93,7 @@ pub struct BlockRequest {
 
 #[repr(u32)]
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum RequestType {
     In = 0,
     Out = 1,
