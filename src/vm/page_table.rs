@@ -1,7 +1,7 @@
 //! riscv page table
 
-use core::ops::{Index, IndexMut};
 use super::page_flag::PteFlag;
+use core::ops::{Index, IndexMut};
 
 // 4096 bytes / 8 bytes per entry = 512 entries
 const ENTRY_COUNT: usize = 512;
@@ -14,7 +14,7 @@ impl PageTableIndex {
     /// Will crash if the input > 512
     pub fn new(index: u16) -> Self {
         assert!((index as usize) < ENTRY_COUNT);
-        Self (index)
+        Self(index)
     }
 
     /// Create a PageTableIndex from u16
@@ -42,25 +42,23 @@ impl PageTableLevel {
     pub const fn next_level(self) -> Option<Self> {
         match self {
             PageTableLevel::Three => Some(PageTableLevel::Two),
-            PageTableLevel::Two   => Some(PageTableLevel::One),
-            PageTableLevel::One   => Some(PageTableLevel::Zero),
-            PageTableLevel::Zero  => None,
+            PageTableLevel::Two => Some(PageTableLevel::One),
+            PageTableLevel::One => Some(PageTableLevel::Zero),
+            PageTableLevel::Zero => None,
         }
     }
 }
 
-#[derive(Clone,Default)]
+#[derive(Clone, Default)]
 pub struct PageTableEntry {
-    entry: u64
+    entry: u64,
 }
 
 impl PageTableEntry {
     // Create empty page table entry
     #[inline]
     pub const fn new() -> Self {
-        Self {
-            entry: 0
-        }
+        Self { entry: 0 }
     }
 
     // true if page is zero (unused)
@@ -92,7 +90,7 @@ impl PageTableEntry {
 }
 
 pub struct PageTable {
-    entries: [PageTableEntry;ENTRY_COUNT]
+    entries: [PageTableEntry; ENTRY_COUNT],
 }
 
 impl PageTable {
@@ -101,7 +99,7 @@ impl PageTable {
     pub const fn new() -> Self {
         const EMPTY: PageTableEntry = PageTableEntry::new();
         Self {
-            entries: [EMPTY;ENTRY_COUNT]
+            entries: [EMPTY; ENTRY_COUNT],
         }
     }
 }
